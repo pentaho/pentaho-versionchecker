@@ -1,0 +1,42 @@
+<project name="Pentaho Version Checker" default="dist">
+
+	<description>Pentaho Version Checker</description>
+	<property file="build.properties" />
+
+	<path id="classpath">
+		<fileset dir="${lib.dir}">
+			<include name="*.jar" />
+			<include name="*.zip" />
+		</fileset>
+	</path>
+
+	<target name="init">
+	</target>
+
+	<target name="clean">
+		<!-- remove build directory -->
+		<delete dir="${bin.dir}" />
+		<delete dir="${dist.dir}" />
+	</target>
+
+	<target name="clean-dist">
+		<delete dir="dist"/>
+	</target>
+
+	<target name="compile" depends="init">
+		<!-- Compile all java classes -->
+		<mkdir dir="${bin.dir}"/>
+		<javac destdir="${bin.dir}" debug="false" optimize="true" deprecation="true" fork="true" source="1.4" target="1.4">
+			<classpath>
+				<path refid="classpath" />
+			</classpath>
+			<src path="${src.dir}" />
+		</javac>
+	</target>
+	
+	<target name="dist" depends="clean, compile" description="Creates a ZIP distribution of the Version Checker library.">
+		<mkdir dir="dist" />
+		<zip destfile="dist/pentaho-versionchecker.jar" basedir="${bin.dir}"/>
+	</target>
+	
+</project>
