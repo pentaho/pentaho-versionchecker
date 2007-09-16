@@ -10,7 +10,7 @@ public class VersionCheckResourceBundle {
   /**
    * Name of the resource bundle used by the version checker
    */
-  private static final String BUNDLE_NAME = "org.pentaho.util.versionchecker.VersionChecker"; //$NON-NLS-1$
+  private static final String BUNDLE_NAME = "org.pentaho.versionchecker.VersionChecker"; //$NON-NLS-1$
 
   /**
    * Resource bundle used by ther vesion checker

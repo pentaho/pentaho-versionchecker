@@ -6,12 +6,13 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.ResourceBundle;
 import java.util.Set;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpMethod;
+import org.apache.commons.httpclient.URI;
+import org.apache.commons.httpclient.URIException;
 import org.apache.commons.httpclient.methods.GetMethod;
 
 /**
@@ -136,8 +137,9 @@ public class VersionChecker {
    * Sets the URL (and parameters) for the request in the HttpMethod.
    * The data provider information is sed to set the parameters
    * @param method the method which will have the URL set
+   * @throws URIException Indicates an error creating the URI 
    */
-  protected void setURL(HttpMethod method) {
+  protected void setURL(HttpMethod method) throws URIException {
     String urlBase = null;
     final Map parameters = new HashMap();
 
@@ -169,7 +171,7 @@ public class VersionChecker {
     }
 
     // Set the url in the method
-    method.setQueryString(createURL(urlBase, parameters));
+    method.setURI(new URI(createURL(urlBase, parameters),true));
   }
   
   /**
