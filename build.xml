@@ -23,15 +23,20 @@
 		<delete dir="dist"/>
 	</target>
 
-	<target name="compile" depends="init">
+	<target name="compile" depends="clean, init">
 		<!-- Compile all java classes -->
 		<mkdir dir="${bin.dir}"/>
-		<javac destdir="${bin.dir}" debug="false" optimize="true" deprecation="true" fork="true" source="1.4" target="1.4">
+		<javac destdir="${bin.dir}" debug="true" optimize="true" deprecation="true" fork="true" source="1.4" target="1.4">
 			<classpath>
 				<path refid="classpath" />
 			</classpath>
 			<src path="${src.dir}" />
 		</javac>
+		<copy todir="${bin.dir}" flatten="false">
+			<fileset dir="${src.dir}">
+				<include name="**/*.properties"/>
+			</fileset>
+		</copy>
 	</target>
 	
 	<target name="dist" depends="clean, compile" description="Creates a ZIP distribution of the Version Checker library.">
