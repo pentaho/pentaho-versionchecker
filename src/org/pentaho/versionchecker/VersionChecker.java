@@ -1,15 +1,21 @@
 package org.pentaho.versionchecker;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.net.HttpURLConnection;
 import java.net.URLEncoder;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.httpclient.HttpClient;
+import org.apache.commons.httpclient.HttpConnectionManager;
 import org.apache.commons.httpclient.HttpMethod;
 import org.apache.commons.httpclient.URI;
 import org.apache.commons.httpclient.URIException;
@@ -27,6 +33,72 @@ import org.apache.commons.httpclient.methods.GetMethod;
  */
 public class VersionChecker {
 
+  private static final String PENTAHO_DIR = ".pentaho";  //$NON-NLS-1$
+  private static final String VERCHECK_PROPS_FILENAME = ".vercheck"; //$NON-NLS-1$
+   
+  // property name constants
+  private static final String PROP_ROOT = "versionchk"; //$NON-NLS-1$
+  private static final String PROP_SYSTEM_GUID = PROP_ROOT + ".guid"; //$NON-NLS-1$
+  private static final String PROP_UPDATE = "update"; //$NON-NLS-1$
+  private static final String PROP_LASTCHECK = "lastcheck"; //$NON-NLS-1$
+  
+
+  private File getPropsDir() {
+    return new File(
+        System.getProperty("user.home") + File.separator + //$NON-NLS-1$
+        PENTAHO_DIR);  
+  }
+  
+  private File getPropsFile() {
+    return new File(
+        System.getProperty("user.home") + File.separator + //$NON-NLS-1$
+        PENTAHO_DIR + File.separator +
+        VERCHECK_PROPS_FILENAME);  
+  }
+  
+  private Properties loadProperties() {
+    Properties props = new Properties();
+    File propsFile = getPropsFile();
+    FileInputStream fis = null;
+    try {
+      fis = new FileInputStream(propsFile);
+      props.load(fis);
+    } catch (Exception e) {
+      // suppress any loading issues
+    } finally {
+      try {
+        if (fis != null) { 
+          fis.close();
+        }
+      } catch (Exception e) {
+        // suppress any closing issues
+      }
+    }
+    return props;
+  }
+  
+  private void saveProperties(Properties props) {
+    File propsDir = getPropsDir();
+    File propsFile = getPropsFile();
+    
+    FileOutputStream fos = null;
+    try {
+      propsDir.mkdirs();
+      fos = new FileOutputStream(propsFile);
+      props.store(fos, "Pentaho Version Checker Properties"); //$NON-NLS-1$
+    } catch (Exception e) {
+      // suppress any saving issues
+    } finally {
+      try {
+        if (fos != null) { 
+          fos.close();
+        }
+      } catch (Exception e) {
+        // suppress any closing issues
+      }
+    }
+  }
+  
   /**
    * The data provider that will be used to retrieve the data
    * about this instance of the running application
@@ -49,6 +121,8 @@ public class VersionChecker {
    * Default URL used if none is provided - read from the resource bundle
    */
   private static final String DEFAULT_URL = VersionCheckResourceBundle.getString("VersionChecker.CODE_default_url"); //$NON-NLS-1$
+  
+  private static final String DEFAULT_TIMEOUT_MILLIS = VersionCheckResourceBundle.getString("VersionChecker.CODE_default_timeout_millis"); //$NON-NLS-1$
 
   /**
    * Default constructor
@@ -108,22 +182,58 @@ public class VersionChecker {
    * <br>
    * NOTE: If no DataProvider is specified, this method will still execute.
    */
-  public void performCheck() {
+  public void performCheck(boolean ignoreExistingUpdates) {
+    
+    // load existing properties
+    Properties props = loadProperties();
+    String guid = props.getProperty(PROP_SYSTEM_GUID);
+    if (guid == null) {
+      // generate guid
+      guid = UUIDUtil.getUUIDAsString();
+      // save guid
+      props.setProperty(PROP_SYSTEM_GUID, guid);
+      saveProperties(props);
+    }
+    
     final HttpClient httpClient = getHttpClient();
     final HttpMethod httpMethod = getHttpMethod();
     try {
+      int timeout = 30000;
+      try {
+        timeout = Integer.parseInt(DEFAULT_TIMEOUT_MILLIS);
+      } catch (Exception e) {
+        // ignore
+      }
+      
+      httpClient.getHttpConnectionManager().getParams().setSoTimeout(timeout);
+       
+      
       // Set the URL and parameters
-      setURL(httpMethod);
+      setURL(httpMethod, guid);
 
       // Execute the request
       final int resultCode = httpClient.executeMethod(httpMethod);
       if (resultCode != HttpURLConnection.HTTP_OK) {
-        throw new Exception("Invalid Result Code Returned: "+resultCode); //TODO - improve this
+        // TODO - improve this
+        throw new Exception("Invalid Result Code Returned: "+resultCode); //$NON-NLS-1$
       }
 
+      String resultXml = httpMethod.getResponseBodyAsString();
+      
+      resultXml = checkForUpdates(dataProvider, resultXml, props, ignoreExistingUpdates);
+      
       // Pass the results along
-      processResults(httpMethod.getResponseBodyAsString());
+      processResults(resultXml);
 
+      // save properties file with updated timestamp
+      // note that any updates changed above will be saved also
+      if (dataProvider != null) {
+        String lastCheckProp = PROP_ROOT + dataProvider.getApplicationID() + "." +  //$NON-NLS-1$
+                               dataProvider.getApplicationVersion() + PROP_LASTCHECK;
+        props.setProperty(lastCheckProp, new Date().toString());
+        saveProperties(props);
+      }
+      
       // Clean up
       httpMethod.releaseConnection();
 
@@ -132,14 +242,71 @@ public class VersionChecker {
       handleException(e);
     }
   }
-
+  
+  /**
+   * This utility method checks for updates
+   * Update the .updates property, and also 
+   * supports suppression of update if requested
+   * 
+   * @param resultXml the xml from the server
+   * @param props the global properties object
+   * @param ignoreExistingUpdates true if we should ignore existing updates
+   * 
+   * @return original or suppressed resultXml
+   */
+  static String checkForUpdates(IVersionCheckDataProvider dataProvider, String resultXml, Properties props, boolean ignoreExistingUpdates) {
+    if (dataProvider != null) {
+      int updateLoc = resultXml.indexOf("<update"); //$NON-NLS-1$
+      if (updateLoc >= 0) {
+        
+        boolean found = true;
+        while (updateLoc >= 0) {
+          // extract version and type the old fashioned way to avoid including libs
+          int versionLocBegin = resultXml.indexOf(" version=\"", updateLoc); //$NON-NLS-1$
+          int versionLocEnd = resultXml.indexOf("\"", versionLocBegin + 10); //$NON-NLS-1$
+          String version = resultXml.substring(versionLocBegin + 10, versionLocEnd);
+          int typeLocBegin = resultXml.indexOf(" type=\"", updateLoc); //$NON-NLS-1$
+          int typeLocEnd = resultXml.indexOf("\"", typeLocBegin + 7); //$NON-NLS-1$
+          String type = resultXml.substring(typeLocBegin + 7, typeLocEnd);
+          String versionAndType = version + " " + type; //$NON-NLS-1$
+          
+          // locate the version in the properties 
+          String updateProp = PROP_ROOT + "." + dataProvider.getApplicationID() + "." +  //$NON-NLS-1$ //$NON-NLS-2$
+                              dataProvider.getApplicationVersion() + "." + PROP_UPDATE; //$NON-NLS-1$
+          
+          String updateVal = props.getProperty(updateProp, ""); //$NON-NLS-1$
+          
+          // if the version isn't in the list of updates
+          if (updateVal.indexOf(versionAndType) < 0) {
+            if (updateVal.length() > 0) {
+              updateVal += ","; //$NON-NLS-1$
+            }
+            updateVal += versionAndType;
+            props.setProperty(updateProp, updateVal);
+            found = false;
+          }
+          
+          // next update location
+          updateLoc = resultXml.indexOf("<update", updateLoc + 1); //$NON-NLS-1$
+        }
+        
+        // if suppressExistingUpdates is true and all the updates
+        // listed have been found before, suppress the update
+        if (found && ignoreExistingUpdates) {
+          return "<vercheck protocol=\"1.0\"/>"; //$NON-NLS-1$
+        }
+      }
+    }
+    return resultXml;
+  }
+  
   /**
    * Sets the URL (and parameters) for the request in the HttpMethod.
    * The data provider information is sed to set the parameters
    * @param method the method which will have the URL set
    * @throws URIException Indicates an error creating the URI 
    */
-  protected void setURL(HttpMethod method) throws URIException {
+  protected void setURL(HttpMethod method, String guid) throws URIException {
     String urlBase = null;
     final Map parameters = new HashMap();
 
@@ -156,9 +323,11 @@ public class VersionChecker {
 
       // Add the specific parameters
       final String productID = dataProvider.getApplicationID();
-      final String guid = dataProvider.getGuid();
       final String version = dataProvider.getApplicationVersion();
+      final int depth = dataProvider.getDepth();
       final String vi = computeVI(productID, guid);
+      
+      parameters.put("depth", "" + depth);  //$NON-NLS-1$ //$NON-NLS-2$
       parameters.put("prodID", productID); //$NON-NLS-1$
       parameters.put("version", version); //$NON-NLS-1$
       parameters.put("guid", guid); //$NON-NLS-1$

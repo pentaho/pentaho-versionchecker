@@ -23,7 +23,7 @@ public class DefaultConsoleResultProcessorTest extends TestCase implements IVers
     vc.addErrorHandler(this);
     vc.addResultHandler(this);
     vc.addResultHandler(rp);
-    vc.performCheck();
+    vc.performCheck(false);
 
     assertNull(error);
     assertNotNull(results);
@@ -46,6 +46,10 @@ public class DefaultConsoleResultProcessorTest extends TestCase implements IVers
   public Map getExtraInformation() {
     // TODO Auto-generated method stub
     return null;
+  }
+  
+  public int getDepth() {
+    return 154;
   }
 
   public String getGuid() {

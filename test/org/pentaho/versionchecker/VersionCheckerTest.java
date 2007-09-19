@@ -5,6 +5,7 @@ import java.net.HttpURLConnection;
 import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 
 import junit.framework.TestCase;
 
@@ -28,15 +29,15 @@ public class VersionCheckerTest extends TestCase {
     VersionChecker vc = new VersionChecker(httpClient, null);
 
     vc.setDataProvider(dataProvider);
-    vc.performCheck();
+    vc.performCheck(false);
     assertEquals(1, dataProvider.getApplicationIDCallCount);
 
     vc.setDataProvider(null);
-    vc.performCheck();
+    vc.performCheck(false);
     assertEquals(1, dataProvider.getApplicationIDCallCount);
 
     vc.setDataProvider(dataProvider);
-    vc.performCheck();
+    vc.performCheck(false);
     assertEquals(2, dataProvider.getApplicationIDCallCount);
   }
 
@@ -51,14 +52,14 @@ public class VersionCheckerTest extends TestCase {
     VersionChecker vc = new VersionChecker(httpClient, getMethod);
 
     vc.addResultHandler(resultsHandler1);
-    vc.performCheck();
+    vc.performCheck(false);
     assertEquals(1, resultsHandler1.processResultsCount);
     assertEquals(getMethod.responseBody, resultsHandler1.results);
 
     vc.addResultHandler(resultsHandler2);
     vc.removeResultHandler(null);
     resultsHandler1.results = null;
-    vc.performCheck();
+    vc.performCheck(false);
     assertEquals(2, resultsHandler1.processResultsCount);
     assertEquals(1, resultsHandler2.processResultsCount);
     assertEquals(getMethod.responseBody, resultsHandler1.results);
@@ -67,14 +68,14 @@ public class VersionCheckerTest extends TestCase {
     vc.removeResultHandler(resultsHandler1);
     resultsHandler1.results = null;
     resultsHandler2.results = null;
-    vc.performCheck();
+    vc.performCheck(false);
     assertEquals(2, resultsHandler1.processResultsCount);
     assertEquals(2, resultsHandler2.processResultsCount);
     assertEquals(null, resultsHandler1.results);
     assertEquals(getMethod.responseBody, resultsHandler2.results);
 
     resultsHandler2.throwException = true;
-    vc.performCheck();
+    vc.performCheck(false);
     assertEquals(3, resultsHandler2.processResultsCount);
   }
 
@@ -89,23 +90,23 @@ public class VersionCheckerTest extends TestCase {
     MockErrorHandler errorHandler1 = new MockErrorHandler();
     MockErrorHandler errorHandler2 = new MockErrorHandler();
     vc.addErrorHandler(errorHandler1);
-    vc.performCheck();
+    vc.performCheck(false);
     assertEquals(1, errorHandler1.errorCount);
 
     vc.addErrorHandler(errorHandler2);
     vc.addErrorHandler(null);
-    vc.performCheck();
+    vc.performCheck(false);
     assertEquals(2, errorHandler1.errorCount);
     assertEquals(1, errorHandler2.errorCount);
 
     vc.removeErrorHandler(errorHandler1);
     vc.removeErrorHandler(null);
-    vc.performCheck();
+    vc.performCheck(false);
     assertEquals(2, errorHandler1.errorCount);
     assertEquals(2, errorHandler2.errorCount);
 
     errorHandler2.throwException = true;
-    vc.performCheck();
+    vc.performCheck(false);
     assertEquals(3, errorHandler2.errorCount);
   }
 
@@ -116,13 +117,13 @@ public class VersionCheckerTest extends TestCase {
     try {
       MockGetMethod httpMethod = new MockGetMethod();
       VersionChecker vc = new VersionChecker(null, httpMethod);
-      vc.setURL(httpMethod);
+      vc.setURL(httpMethod, null);
       assertEquals(1, httpMethod.setQueryStringCount);
       assertEquals(vc.getDefaultURL(), httpMethod._queryString);
 
       MockDataProvider dataProvider = new MockDataProvider();
       vc.setDataProvider(dataProvider);
-      vc.setURL(httpMethod);
+      vc.setURL(httpMethod, null);
       assertEquals(2, httpMethod.setQueryStringCount);
       assertTrue(httpMethod._queryString.startsWith("http://test.pentho.org:8080/sample?"));
     } catch (URIException e) {
@@ -159,6 +160,47 @@ public class VersionCheckerTest extends TestCase {
     assertEquals(baseUrl + "two=two", result);
   }
 
+  public void testCheckForUpdates() {
+    String xmlTest = "<vercheck protocol=\"1.0\"/>";
+    IVersionCheckDataProvider dataProvider = new MockDataProvider();
+    Properties props = new Properties();
+    String output = VersionChecker.checkForUpdates(dataProvider, xmlTest, props, false);
+    assertEquals(xmlTest, output);
+    assertEquals(props.size(), 0);
+    
+    xmlTest = "<vercheck protocol=\"1.0\">\n" +
+              "<update version=\"\" type=\"\"/>\n" +
+              "</vercheck>";
+    
+    output = VersionChecker.checkForUpdates(dataProvider, xmlTest, props, false);
+    assertEquals(xmlTest, output);
+    assertEquals(props.getProperty("versionchk.prd.1.6.0-RC1.123.update"), " ");
+   
+    output = VersionChecker.checkForUpdates(dataProvider, xmlTest, props, true);
+    assertEquals(output, "<vercheck protocol=\"1.0\"/>");
+    assertEquals(props.getProperty("versionchk.prd.1.6.0-RC1.123.update"), " ");
+    
+    xmlTest = "<vercheck protocol=\"1.0\">\n" +
+    "<update version=\"1.1\" type=\"GA\"/>\n" +
+    "<update version=\"1.2\" type=\"GA\"/>\n" +
+    "</vercheck>";
+
+    props = new Properties();
+    
+    output = VersionChecker.checkForUpdates(dataProvider, xmlTest, props, true);
+    assertEquals(xmlTest, output);
+    assertEquals(props.getProperty("versionchk.prd.1.6.0-RC1.123.update"), "1.1 GA,1.2 GA");
+   
+    output = VersionChecker.checkForUpdates(dataProvider, xmlTest, props, false);
+    assertEquals(xmlTest, output);
+    assertEquals(props.getProperty("versionchk.prd.1.6.0-RC1.123.update"), "1.1 GA,1.2 GA");
+    
+    output = VersionChecker.checkForUpdates(dataProvider, xmlTest, props, true);
+    assertEquals(output, "<vercheck protocol=\"1.0\"/>");
+    assertEquals(props.getProperty("versionchk.prd.1.6.0-RC1.123.update"), "1.1 GA,1.2 GA");
+    
+  }
+  
   /**
    * Mock GetMethod that allows for the tracking of the URL and the 
    * returning of sample results 
@@ -230,6 +272,10 @@ public class VersionCheckerTest extends TestCase {
       ++getApplicationVersionCount;
       return applicationVersion;
     }
+    
+    public int getDepth() {
+      return 154;
+    }
 
     public int getBaseURLCount = 0;
 
@@ -247,15 +293,6 @@ public class VersionCheckerTest extends TestCase {
     public Map getExtraInformation() {
       ++getExtraInformationCount;
       return extraInformation;
-    }
-
-    public int getGuidCount = 0;
-
-    public String guid = "a1b2-c3d4-e5f6-g7h8";
-
-    public String getGuid() {
-      ++getGuidCount;
-      return guid;
     }
   };
 
