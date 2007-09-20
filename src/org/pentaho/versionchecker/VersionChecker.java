@@ -228,8 +228,8 @@ public class VersionChecker {
       // save properties file with updated timestamp
       // note that any updates changed above will be saved also
       if (dataProvider != null) {
-        String lastCheckProp = PROP_ROOT + dataProvider.getApplicationID() + "." +  //$NON-NLS-1$
-                               dataProvider.getApplicationVersion() + PROP_LASTCHECK;
+        String lastCheckProp = PROP_ROOT + "." + dataProvider.getApplicationID() + "." +  //$NON-NLS-1$ //$NON-NLS-2$
+                               dataProvider.getApplicationVersion() + "." + PROP_LASTCHECK; //$NON-NLS-1$
         props.setProperty(lastCheckProp, new Date().toString());
         saveProperties(props);
       }
