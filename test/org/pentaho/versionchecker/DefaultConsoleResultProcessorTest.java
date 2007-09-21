@@ -1,3 +1,16 @@
+/*
+ * Copyright 2007 Pentaho Corporation.  All rights reserved. 
+ * This software was developed by Pentaho Corporation and is provided under the terms 
+ * of the Mozilla Public License, Version 1.1, or any later version. You may not use 
+ * this file except in compliance with the license. If you need a copy of the license, 
+ * please go to http://www.mozilla.org/MPL/MPL-1.1.txt. The Original Code is the Pentaho 
+ * BI Platform.  The Initial Developer is Pentaho Corporation.
+ *
+ * Software distributed under the Mozilla Public License is distributed on an "AS IS" 
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or  implied. Please refer to 
+ * the license for the specific language governing your rights and limitations.
+ * 
+ */
 package org.pentaho.versionchecker;
 
 import java.io.ByteArrayOutputStream;
@@ -31,16 +44,16 @@ public class DefaultConsoleResultProcessorTest extends TestCase implements IVers
   }
 
   public String getApplicationID() {
-    return "POBS";
+    return "POBS"; //$NON-NLS-1$
   }
 
   public String getApplicationVersion() {
-    return "1.6.0.RC1.400";
+    return "1.6.0.RC1.400"; //$NON-NLS-1$
   }
 
   public String getBaseURL() {
     // TODO Auto-generated method stub
-    return "http://www.pentaho.com/versioncheck/index2.php?protocolVer=1.0&depth=154";
+    return "http://www.pentaho.com/versioncheck/index2.php?protocolVer=1.0&depth=154"; //$NON-NLS-1$
   }
 
   public Map getExtraInformation() {
@@ -54,7 +67,7 @@ public class DefaultConsoleResultProcessorTest extends TestCase implements IVers
 
   public String getGuid() {
     // TODO Auto-generated method stub
-    return "0000-0000-0000-0000";
+    return "0000-0000-0000-0000"; //$NON-NLS-1$
   }
 
   public void handleException(Exception e) {
@@ -63,7 +76,7 @@ public class DefaultConsoleResultProcessorTest extends TestCase implements IVers
   }
 
   public void processResults(String results) {
-    System.out.println("RESULTS: "+results+"\n");
+    System.out.println("RESULTS: "+results+"\n"); //$NON-NLS-1$ //$NON-NLS-2$
     this.results = results;
   }
 }

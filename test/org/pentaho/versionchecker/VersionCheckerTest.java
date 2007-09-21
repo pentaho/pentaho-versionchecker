@@ -1,3 +1,16 @@
+/*
+ * Copyright 2007 Pentaho Corporation.  All rights reserved. 
+ * This software was developed by Pentaho Corporation and is provided under the terms 
+ * of the Mozilla Public License, Version 1.1, or any later version. You may not use 
+ * this file except in compliance with the license. If you need a copy of the license, 
+ * please go to http://www.mozilla.org/MPL/MPL-1.1.txt. The Original Code is the Pentaho 
+ * BI Platform.  The Initial Developer is Pentaho Corporation.
+ *
+ * Software distributed under the Mozilla Public License is distributed on an "AS IS" 
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or  implied. Please refer to 
+ * the license for the specific language governing your rights and limitations.
+ * 
+ */
 package org.pentaho.versionchecker;
 
 import java.io.IOException;
@@ -84,7 +97,7 @@ public class VersionCheckerTest extends TestCase {
    */
   public void testErrorHandler() {
     MockDataProvider dataProvider = new MockDataProvider();
-    dataProvider.baseURL = "htp://test.pentaho.org/testing_page_doesnot_exist";
+    dataProvider.baseURL = "htp://test.pentaho.org/testing_page_doesnot_exist"; //$NON-NLS-1$
     VersionChecker vc = new VersionChecker();
     vc.setDataProvider(dataProvider);
     MockErrorHandler errorHandler1 = new MockErrorHandler();
@@ -125,7 +138,7 @@ public class VersionCheckerTest extends TestCase {
       vc.setDataProvider(dataProvider);
       vc.setURL(httpMethod, null);
       assertEquals(2, httpMethod.setQueryStringCount);
-      assertTrue(httpMethod._queryString.startsWith("http://test.pentho.org:8080/sample?"));
+      assertTrue(httpMethod._queryString.startsWith("http://test.pentho.org:8080/sample?")); //$NON-NLS-1$
     } catch (URIException e) {
       fail(e.getMessage());
     }
@@ -133,71 +146,71 @@ public class VersionCheckerTest extends TestCase {
 
   public void testCreateURL() {
     Map params = new HashMap();
-    String baseUrl = "http://www.pentaho.org/";
+    String baseUrl = "http://www.pentaho.org/"; //$NON-NLS-1$
     String result = VersionChecker.createURL(baseUrl, params);
     assertEquals(baseUrl, result);
 
-    String junk = "a1B2 !@#$%^&*()_-+={[}]|\\:;\"'<,>.?/~`";
+    String junk = "a1B2 !@#$%^&*()_-+={[}]|\\:;\"'<,>.?/~`"; //$NON-NLS-1$
     String encodedJunk = URLEncoder.encode(junk);
-    params.put("junk", junk);
+    params.put("junk", junk); //$NON-NLS-1$
     result = VersionChecker.createURL(baseUrl, params);
-    assertEquals(baseUrl + "?junk=" + encodedJunk, result);
+    assertEquals(baseUrl + "?junk=" + encodedJunk, result); //$NON-NLS-1$
 
-    params.put("one", "one");
+    params.put("one", "one"); //$NON-NLS-1$ //$NON-NLS-2$
     result = VersionChecker.createURL(baseUrl, params);
-    assertTrue(result.indexOf("?one=one&") > 0 || result.indexOf("&one=one") > 0);
-
-    params.clear();
-    params.put("two", "two");
-    baseUrl += "?one=one";
-    result = VersionChecker.createURL(baseUrl, params);
-    assertEquals(baseUrl + "&two=two", result);
+    assertTrue(result.indexOf("?one=one&") > 0 || result.indexOf("&one=one") > 0); //$NON-NLS-1$ //$NON-NLS-2$
 
     params.clear();
-    params.put("two", "two");
-    baseUrl += "&";
+    params.put("two", "two"); //$NON-NLS-1$ //$NON-NLS-2$
+    baseUrl += "?one=one"; //$NON-NLS-1$
     result = VersionChecker.createURL(baseUrl, params);
-    assertEquals(baseUrl + "two=two", result);
+    assertEquals(baseUrl + "&two=two", result); //$NON-NLS-1$
+
+    params.clear();
+    params.put("two", "two"); //$NON-NLS-1$ //$NON-NLS-2$
+    baseUrl += "&"; //$NON-NLS-1$
+    result = VersionChecker.createURL(baseUrl, params);
+    assertEquals(baseUrl + "two=two", result); //$NON-NLS-1$
   }
 
   public void testCheckForUpdates() {
-    String xmlTest = "<vercheck protocol=\"1.0\"/>";
+    String xmlTest = "<vercheck protocol=\"1.0\"/>"; //$NON-NLS-1$
     IVersionCheckDataProvider dataProvider = new MockDataProvider();
     Properties props = new Properties();
     String output = VersionChecker.checkForUpdates(dataProvider, xmlTest, props, false);
     assertEquals(xmlTest, output);
     assertEquals(props.size(), 0);
     
-    xmlTest = "<vercheck protocol=\"1.0\">\n" +
-              "<update version=\"\" type=\"\"/>\n" +
-              "</vercheck>";
+    xmlTest = "<vercheck protocol=\"1.0\">\n" + //$NON-NLS-1$
+              "<update version=\"\" type=\"\"/>\n" + //$NON-NLS-1$
+              "</vercheck>"; //$NON-NLS-1$
     
     output = VersionChecker.checkForUpdates(dataProvider, xmlTest, props, false);
     assertEquals(xmlTest, output);
-    assertEquals(props.getProperty("versionchk.prd.1.6.0-RC1.123.update"), " ");
+    assertEquals(props.getProperty("versionchk.prd.1.6.0-RC1.123.update"), " "); //$NON-NLS-1$ //$NON-NLS-2$
    
     output = VersionChecker.checkForUpdates(dataProvider, xmlTest, props, true);
-    assertEquals(output, "<vercheck protocol=\"1.0\"/>");
-    assertEquals(props.getProperty("versionchk.prd.1.6.0-RC1.123.update"), " ");
+    assertEquals(output, "<vercheck protocol=\"1.0\"/>"); //$NON-NLS-1$
+    assertEquals(props.getProperty("versionchk.prd.1.6.0-RC1.123.update"), " "); //$NON-NLS-1$ //$NON-NLS-2$
     
-    xmlTest = "<vercheck protocol=\"1.0\">\n" +
-    "<update version=\"1.1\" type=\"GA\"/>\n" +
-    "<update version=\"1.2\" type=\"GA\"/>\n" +
-    "</vercheck>";
+    xmlTest = "<vercheck protocol=\"1.0\">\n" + //$NON-NLS-1$
+    "<update version=\"1.1\" type=\"GA\"/>\n" + //$NON-NLS-1$
+    "<update version=\"1.2\" type=\"GA\"/>\n" + //$NON-NLS-1$
+    "</vercheck>"; //$NON-NLS-1$
 
     props = new Properties();
     
     output = VersionChecker.checkForUpdates(dataProvider, xmlTest, props, true);
     assertEquals(xmlTest, output);
-    assertEquals(props.getProperty("versionchk.prd.1.6.0-RC1.123.update"), "1.1 GA,1.2 GA");
+    assertEquals(props.getProperty("versionchk.prd.1.6.0-RC1.123.update"), "1.1 GA,1.2 GA"); //$NON-NLS-1$ //$NON-NLS-2$
    
     output = VersionChecker.checkForUpdates(dataProvider, xmlTest, props, false);
     assertEquals(xmlTest, output);
-    assertEquals(props.getProperty("versionchk.prd.1.6.0-RC1.123.update"), "1.1 GA,1.2 GA");
+    assertEquals(props.getProperty("versionchk.prd.1.6.0-RC1.123.update"), "1.1 GA,1.2 GA"); //$NON-NLS-1$ //$NON-NLS-2$
     
     output = VersionChecker.checkForUpdates(dataProvider, xmlTest, props, true);
-    assertEquals(output, "<vercheck protocol=\"1.0\"/>");
-    assertEquals(props.getProperty("versionchk.prd.1.6.0-RC1.123.update"), "1.1 GA,1.2 GA");
+    assertEquals(output, "<vercheck protocol=\"1.0\"/>"); //$NON-NLS-1$
+    assertEquals(props.getProperty("versionchk.prd.1.6.0-RC1.123.update"), "1.1 GA,1.2 GA"); //$NON-NLS-1$ //$NON-NLS-2$
     
   }
   
@@ -208,7 +221,7 @@ public class VersionCheckerTest extends TestCase {
   private class MockGetMethod extends GetMethod {
     public int getResponseBodyCount = 0;
 
-    public String responseBody = "sample response";
+    public String responseBody = "sample response"; //$NON-NLS-1$
 
     public String getResponseBodyAsString() {
       ++getResponseBodyCount;
@@ -257,7 +270,7 @@ public class VersionCheckerTest extends TestCase {
   private class MockDataProvider implements IVersionCheckDataProvider {
     public int getApplicationIDCallCount = 0;
 
-    public String applicationID = "prd";
+    public String applicationID = "prd"; //$NON-NLS-1$
 
     public String getApplicationID() {
       ++getApplicationIDCallCount;
@@ -266,7 +279,7 @@ public class VersionCheckerTest extends TestCase {
 
     public int getApplicationVersionCount = 0;
 
-    public String applicationVersion = "1.6.0-RC1.123";
+    public String applicationVersion = "1.6.0-RC1.123"; //$NON-NLS-1$
 
     public String getApplicationVersion() {
       ++getApplicationVersionCount;
@@ -279,7 +292,7 @@ public class VersionCheckerTest extends TestCase {
 
     public int getBaseURLCount = 0;
 
-    public String baseURL = "http://test.pentho.org:8080/sample";
+    public String baseURL = "http://test.pentho.org:8080/sample"; //$NON-NLS-1$
 
     public String getBaseURL() {
       ++getBaseURLCount;
@@ -307,7 +320,7 @@ public class VersionCheckerTest extends TestCase {
       ++processResultsCount;
       this.results = results;
       if (throwException) {
-        throw new NullPointerException("Test");
+        throw new NullPointerException("Test"); //$NON-NLS-1$
       }
     }
   };
@@ -323,7 +336,7 @@ public class VersionCheckerTest extends TestCase {
       ++errorCount;
       exception = e;
       if (throwException) {
-        throw new NullPointerException("Test");
+        throw new NullPointerException("Test"); //$NON-NLS-1$
       }
     }
   };
