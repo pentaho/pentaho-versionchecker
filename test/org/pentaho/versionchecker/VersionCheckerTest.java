@@ -182,35 +182,37 @@ public class VersionCheckerTest extends TestCase {
     assertEquals(props.size(), 0);
     
     xmlTest = "<vercheck protocol=\"1.0\">\n" + //$NON-NLS-1$
-              "<update version=\"\" type=\"\"/>\n" + //$NON-NLS-1$
+              "<product id=\"\"><update title=\"\" version=\"\" type=\"\"/></product>\n" + //$NON-NLS-1$
               "</vercheck>"; //$NON-NLS-1$
     
     output = VersionChecker.checkForUpdates(dataProvider, xmlTest, props, false);
     assertEquals(xmlTest, output);
-    assertEquals(props.getProperty("versionchk.prd.1.6.0-RC1.123.update"), " "); //$NON-NLS-1$ //$NON-NLS-2$
+    assertEquals(props.getProperty("versionchk.prd.1.6.0-RC1.123.update"), "  "); //$NON-NLS-1$ //$NON-NLS-2$
    
     output = VersionChecker.checkForUpdates(dataProvider, xmlTest, props, true);
     assertEquals(output, "<vercheck protocol=\"1.0\"/>"); //$NON-NLS-1$
-    assertEquals(props.getProperty("versionchk.prd.1.6.0-RC1.123.update"), " "); //$NON-NLS-1$ //$NON-NLS-2$
+    assertEquals(props.getProperty("versionchk.prd.1.6.0-RC1.123.update"), "  "); //$NON-NLS-1$ //$NON-NLS-2$
     
     xmlTest = "<vercheck protocol=\"1.0\">\n" + //$NON-NLS-1$
-    "<update version=\"1.1\" type=\"GA\"/>\n" + //$NON-NLS-1$
-    "<update version=\"1.2\" type=\"GA\"/>\n" + //$NON-NLS-1$
+    "<product id=\"POBS\">\n" + //$NON-NLS-1$
+    "<update title=\"Pentaho BI Suite\" version=\"1.1\" type=\"GA\"/>\n" + //$NON-NLS-1$
+    "<update title=\"Pentaho BI Suite\" version=\"1.2\" type=\"GA\"/>\n" + //$NON-NLS-1$
+    "</product>\n" + //$NON-NLS-1$
     "</vercheck>"; //$NON-NLS-1$
 
     props = new Properties();
     
     output = VersionChecker.checkForUpdates(dataProvider, xmlTest, props, true);
     assertEquals(xmlTest, output);
-    assertEquals(props.getProperty("versionchk.prd.1.6.0-RC1.123.update"), "1.1 GA,1.2 GA"); //$NON-NLS-1$ //$NON-NLS-2$
+    assertEquals(props.getProperty("versionchk.prd.1.6.0-RC1.123.update"), "Pentaho BI Suite 1.1 GA,Pentaho BI Suite 1.2 GA"); //$NON-NLS-1$ //$NON-NLS-2$
    
     output = VersionChecker.checkForUpdates(dataProvider, xmlTest, props, false);
     assertEquals(xmlTest, output);
-    assertEquals(props.getProperty("versionchk.prd.1.6.0-RC1.123.update"), "1.1 GA,1.2 GA"); //$NON-NLS-1$ //$NON-NLS-2$
+    assertEquals(props.getProperty("versionchk.prd.1.6.0-RC1.123.update"), "Pentaho BI Suite 1.1 GA,Pentaho BI Suite 1.2 GA"); //$NON-NLS-1$ //$NON-NLS-2$
     
     output = VersionChecker.checkForUpdates(dataProvider, xmlTest, props, true);
     assertEquals(output, "<vercheck protocol=\"1.0\"/>"); //$NON-NLS-1$
-    assertEquals(props.getProperty("versionchk.prd.1.6.0-RC1.123.update"), "1.1 GA,1.2 GA"); //$NON-NLS-1$ //$NON-NLS-2$
+    assertEquals(props.getProperty("versionchk.prd.1.6.0-RC1.123.update"), "Pentaho BI Suite 1.1 GA,Pentaho BI Suite 1.2 GA"); //$NON-NLS-1$ //$NON-NLS-2$
     
   }
   

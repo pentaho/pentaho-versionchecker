@@ -280,7 +280,12 @@ public class VersionChecker {
           int typeLocBegin = resultXml.indexOf(" type=\"", updateLoc); //$NON-NLS-1$
           int typeLocEnd = resultXml.indexOf("\"", typeLocBegin + 7); //$NON-NLS-1$
           String type = resultXml.substring(typeLocBegin + 7, typeLocEnd);
-          String versionAndType = version + " " + type; //$NON-NLS-1$
+          int titleLocBegin = resultXml.indexOf(" title=\"", updateLoc); //$NON-NLS-1$
+          int titleLocEnd = resultXml.indexOf("\"", titleLocBegin + 8); //$NON-NLS-1$
+          String title = resultXml.substring(titleLocBegin + 8, titleLocEnd);
+          
+          
+          String versionAndType = title + " " + version + " " + type; //$NON-NLS-1$ //$NON-NLS-2$
           
           // locate the version in the properties 
           String updateProp = PROP_ROOT + "." + dataProvider.getApplicationID() + "." +  //$NON-NLS-1$ //$NON-NLS-2$
