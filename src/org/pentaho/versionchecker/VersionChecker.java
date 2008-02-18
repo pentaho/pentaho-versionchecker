@@ -16,6 +16,7 @@ package org.pentaho.versionchecker;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URLEncoder;
 import java.util.Date;
@@ -47,66 +48,184 @@ public class VersionChecker {
 
   private static final String PENTAHO_DIR = ".pentaho";  //$NON-NLS-1$
   private static final String VERCHECK_PROPS_FILENAME = ".vercheck"; //$NON-NLS-1$
+  public static final String VERCHECK_CANT_SAVE_GUID = "12345-67890-09876-54321"; //$NON-NLS-1$
+
+  public static final boolean DEBUGGING = false; // Set to false for final deliverable, and true for verbose output.
    
   // property name constants
   private static final String PROP_ROOT = "versionchk"; //$NON-NLS-1$
   private static final String PROP_SYSTEM_GUID = PROP_ROOT + ".guid"; //$NON-NLS-1$
   private static final String PROP_UPDATE = "update"; //$NON-NLS-1$
   private static final String PROP_LASTCHECK = "lastcheck"; //$NON-NLS-1$
-  
 
-  private File getPropsDir() {
-    return new File(
-        System.getProperty("user.home") + File.separator + //$NON-NLS-1$
-        PENTAHO_DIR);  
+  //
+  // So, you're probably asking "why are these now static variables?", huh? Well, the
+  // answer is that, once we've figured out the stuff, we want to keep it hanging out
+  // in the VM. That way, we're not having to re-calculate things over and over.
+  //
+  private static boolean isWritable = true;
+  private static File propsDirectory;
+  private static File propsFile;
+  private static Properties props;
+  private static String guid;
+  
+  static {
+    if (DEBUGGING) { System.out.println("Static Initializer");} //$NON-NLS-1$
+    init();
   }
   
-  private File getPropsFile() {
-    return new File(
-        System.getProperty("user.home") + File.separator + //$NON-NLS-1$
-        PENTAHO_DIR + File.separator +
-        VERCHECK_PROPS_FILENAME);  
-  }
-  
-  private Properties loadProperties() {
-    Properties props = new Properties();
-    File propsFile = getPropsFile();
-    FileInputStream fis = null;
+  public static void init() {
     try {
-      fis = new FileInputStream(propsFile);
-      props.load(fis);
-    } catch (Exception e) {
-      // suppress any loading issues
-    } finally {
+      isWritable = true;
+      propsDirectory = null;
+      propsFile = null;
+      guid = null;
+      props = new Properties();
+      
+      String homeDir = getHomeDir();
+      if (DEBUGGING) { System.out.println("Home Directory: " + homeDir);} //$NON-NLS-1$
+      if (homeDir == null) {
+        isWritable = false;
+        if (DEBUGGING) { System.out.println("*** Cannot Write Properties ***");} //$NON-NLS-1$
+      } else {
+        propsDirectory = new File(homeDir + (homeDir.endsWith("/") ? "" : File.separator) + PENTAHO_DIR); //$NON-NLS-1$ //$NON-NLS-2$
+        propsDirectory.mkdirs();
+        String propsPath = propsDirectory.getCanonicalPath();
+        propsFile = new File(propsPath + (propsPath.endsWith("/") ? "" : File.separator) + VERCHECK_PROPS_FILENAME); //$NON-NLS-1$ //$NON-NLS-2$
+        if (DEBUGGING) { System.out.println("Properties Path: " + propsPath);} //$NON-NLS-1$
+      }
+    } catch (Throwable th) {
+      isWritable = false;
+    }
+    loadProperties();
+    LoadOrGenerateGuid();
+  }
+
+  public static boolean getIsWritable() {
+    return isWritable;
+  }
+  
+  public static String getPropertiesDirectory() throws IOException {
+    return (propsDirectory != null) ? propsDirectory.getCanonicalPath() : null;
+  }
+  
+  private static void LoadOrGenerateGuid() {
+    guid = props.getProperty(PROP_SYSTEM_GUID);
+    if (DEBUGGING) { System.out.println("Loaded GUID: " + guid);} //$NON-NLS-1$
+    if (guid == null) {
+      // generate guid
+      generateGUID();
+      // save guid
+      props.setProperty(PROP_SYSTEM_GUID, guid);
+      saveProperties();
+    }
+  }
+  
+  private static void generateGUID() {
+    if (isWritable) {
+      guid = UUIDUtil.getUUIDAsString();
+      if (DEBUGGING) { System.out.println("Generated GUID: " + guid);} //$NON-NLS-1$
+    } else {
+      guid = VERCHECK_CANT_SAVE_GUID;
+    }
+  }
+  
+  private static boolean testWritabilityOfFolder(String testName) {
+    boolean rtn = false;
+    if ( (testName != null) && (testName.length() > 0)  ) {
+      String test1 = testName + (testName.endsWith("/") ? "" : File.separator) + "test_pentaho_write_.txt"; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+      File testThisDir = new File(test1);
       try {
-        if (fis != null) { 
-          fis.close();
+        if (!testThisDir.exists()) {
+          // What if we can create the test_pentaho_write_.txt file, but we can't delete
+          // it? Well, this will check that, and will only try creating the file if
+          // it isn't there. Someone could bypass this directory if:
+          //
+          // a. They create the test_pentaho_write_.txt file in the folder
+          // b. ACL out the ability to delete that file
+          // c. Create a .vercheck file that's unwritable in the same folder.
+          //
+          testThisDir.createNewFile();
         }
+        rtn = true;
+        testThisDir.delete();
+      } catch (IOException ignored) {
+        // Ignored on purpose
+        // If we're allowed to write, we're OK - we don't *have* to be able
+        // to delete the temporary file we've created.
+        if (DEBUGGING) { ignored.printStackTrace();}
+      }
+    }
+    return rtn;
+  }
+  
+  private static String getHomeDir() {
+    // First, try the users' home directory.
+    String homeDir = System.getProperty("user.home"); //$NON-NLS-1$
+    if ( (homeDir == null) || (homeDir.length() == 0) || !(testWritabilityOfFolder(homeDir)) ) {
+      // OK, that didn't work. Try the folder this program was
+      // launched from. Can I write there?
+      homeDir = "."; //$NON-NLS-1$
+      if (!testWritabilityOfFolder(homeDir)) {
+        // Uuugh - last resort, but I should be
+        // able to write to the temp directory.
+        // If not, then we can't write anywhere, so
+        // return null.
+        homeDir = System.getProperty("java.io.tmpdir");  //$NON-NLS-1$
+        if (!testWritabilityOfFolder(homeDir)) {
+          homeDir = null;
+        }
+      }
+    }
+    return homeDir;
+  }
+
+  private static Properties loadProperties() {
+    if (isWritable) {
+      FileInputStream fis = null;
+      try {
+        fis = new FileInputStream(propsFile);
+        props.clear();
+        props.load(fis);
       } catch (Exception e) {
-        // suppress any closing issues
+        // suppress any loading issues
+        if (DEBUGGING) { e.printStackTrace(); }
+      } finally {
+        try {
+          if (fis != null) { 
+            fis.close();
+          }
+        } catch (Exception e) {
+          if (DEBUGGING) { e.printStackTrace(); }
+          // suppress any closing issues
+        }
       }
     }
     return props;
   }
+
+  public static String getGuid() {
+    return guid;
+  }
   
-  private void saveProperties(Properties props) {
-    File propsDir = getPropsDir();
-    File propsFile = getPropsFile();
-    
-    FileOutputStream fos = null;
-    try {
-      propsDir.mkdirs();
-      fos = new FileOutputStream(propsFile);
-      props.store(fos, "Pentaho Version Checker Properties"); //$NON-NLS-1$
-    } catch (Exception e) {
-      // suppress any saving issues
-    } finally {
+  private static void saveProperties() {
+    if (isWritable) {
+      FileOutputStream fos = null;
       try {
-        if (fos != null) { 
-          fos.close();
-        }
+        fos = new FileOutputStream(propsFile);
+        props.store(fos, "Pentaho Version Checker Properties"); //$NON-NLS-1$
       } catch (Exception e) {
-        // suppress any closing issues
+        if (DEBUGGING) { e.printStackTrace(); }
+        // suppress any saving issues
+      } finally {
+        try {
+          if (fos != null) { 
+            fos.close();
+          }
+        } catch (Exception e) {
+          if (DEBUGGING) { e.printStackTrace(); }
+          // suppress any closing issues
+        }
       }
     }
   }
@@ -196,17 +315,6 @@ public class VersionChecker {
    */
   public void performCheck(boolean ignoreExistingUpdates) {
     
-    // load existing properties
-    Properties props = loadProperties();
-    String guid = props.getProperty(PROP_SYSTEM_GUID);
-    if (guid == null) {
-      // generate guid
-      guid = UUIDUtil.getUUIDAsString();
-      // save guid
-      props.setProperty(PROP_SYSTEM_GUID, guid);
-      saveProperties(props);
-    }
-    
     final HttpClient httpClient = getHttpClient();
     final HttpMethod httpMethod = getHttpMethod();
     try {
@@ -215,6 +323,7 @@ public class VersionChecker {
         timeout = Integer.parseInt(DEFAULT_TIMEOUT_MILLIS);
       } catch (Exception e) {
         // ignore
+        if (DEBUGGING) { e.printStackTrace(); }
       }
       
       httpClient.getHttpConnectionManager().getParams().setSoTimeout(timeout);
@@ -243,7 +352,7 @@ public class VersionChecker {
         String lastCheckProp = PROP_ROOT + "." + dataProvider.getApplicationID() + "." +  //$NON-NLS-1$ //$NON-NLS-2$
                                dataProvider.getApplicationVersion() + "." + PROP_LASTCHECK; //$NON-NLS-1$
         props.setProperty(lastCheckProp, new Date().toString());
-        saveProperties(props);
+        saveProperties();
       }
       
       // Clean up
@@ -251,6 +360,7 @@ public class VersionChecker {
 
     } catch (Exception e) {
       // IOException covers URIExcecption and HttpException
+      if (DEBUGGING) { e.printStackTrace(); }
       handleException(e);
     }
   }
@@ -261,12 +371,12 @@ public class VersionChecker {
    * supports suppression of update if requested
    * 
    * @param resultXml the xml from the server
-   * @param props the global properties object
+   * @param propsToCheck the global properties object
    * @param ignoreExistingUpdates true if we should ignore existing updates
    * 
    * @return original or suppressed resultXml
    */
-  static String checkForUpdates(IVersionCheckDataProvider dataProvider, String resultXml, Properties props, boolean ignoreExistingUpdates) {
+  static String checkForUpdates(IVersionCheckDataProvider dataProvider, String resultXml, Properties propsToCheck, boolean ignoreExistingUpdates) {
     if (dataProvider != null) {
       int updateLoc = resultXml.indexOf("<update"); //$NON-NLS-1$
       if (updateLoc >= 0) {
@@ -291,7 +401,7 @@ public class VersionChecker {
           String updateProp = PROP_ROOT + "." + dataProvider.getApplicationID() + "." +  //$NON-NLS-1$ //$NON-NLS-2$
                               dataProvider.getApplicationVersion() + "." + PROP_UPDATE; //$NON-NLS-1$
           
-          String updateVal = props.getProperty(updateProp, ""); //$NON-NLS-1$
+          String updateVal = propsToCheck.getProperty(updateProp, ""); //$NON-NLS-1$
           
           // if the version isn't in the list of updates
           if (updateVal.indexOf(versionAndType) < 0) {
@@ -299,7 +409,7 @@ public class VersionChecker {
               updateVal += ","; //$NON-NLS-1$
             }
             updateVal += versionAndType;
-            props.setProperty(updateProp, updateVal);
+            propsToCheck.setProperty(updateProp, updateVal);
             found = false;
           }
           
@@ -342,7 +452,7 @@ public class VersionChecker {
       final String productID = dataProvider.getApplicationID();
       final String version = dataProvider.getApplicationVersion();
       final int depth = dataProvider.getDepth();
-      final String vi = computeVI(productID, guid);
+      final String vi = computeVI(productID);
       
       parameters.put("depth", "" + depth);  //$NON-NLS-1$ //$NON-NLS-2$
       parameters.put("prodID", productID); //$NON-NLS-1$
@@ -357,7 +467,9 @@ public class VersionChecker {
     }
 
     // Set the url in the method
-    method.setURI(new URI(createURL(urlBase, parameters),true));
+    String urlCreated = createURL(urlBase, parameters);
+    URI uri = new URI(urlCreated,true);
+    method.setURI(uri);
   }
   
   /**
@@ -405,7 +517,7 @@ public class VersionChecker {
    * Computes the VI field for the data provided. The VI is the MD5 encryption of the 
    * concatination of the productID and the guid.
    */
-  protected static final String computeVI(final String productID, final String guid) {
+  protected static final String computeVI(final String productID) {
     return DigestUtils.md5Hex((productID == null ? "" : productID) + (guid == null ? "" : guid)); //$NON-NLS-1$ //$NON-NLS-2$
   }
 
@@ -476,11 +588,12 @@ public class VersionChecker {
   protected HttpMethod getHttpMethod() {
     return defaultHttpMethod != null ? defaultHttpMethod : new GetMethod();
   }
-
+  
   // **************************************************************************
   // * Used for Unit Testing                                                  *
   // **************************************************************************
   protected VersionChecker(final HttpClient defaultHttpClient, final HttpMethod defaultHttpMethod) {
+    this();
     setDefaultHttpClient(defaultHttpClient);
     setDefaultHttpMethod(defaultHttpMethod);
   }

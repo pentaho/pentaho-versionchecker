@@ -75,8 +75,8 @@ public class DefaultConsoleResultProcessorTest extends TestCase implements IVers
     error = e;
   }
 
-  public void processResults(String results) {
-    System.out.println("RESULTS: "+results+"\n"); //$NON-NLS-1$ //$NON-NLS-2$
-    this.results = results;
+  public void processResults(String localResults) {
+    System.out.println("RESULTS: "+localResults+"\n"); //$NON-NLS-1$ //$NON-NLS-2$
+    this.results = localResults;
   }
 }

@@ -13,6 +13,7 @@
  */
 package org.pentaho.versionchecker;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URLEncoder;
@@ -27,6 +28,7 @@ import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpException;
 import org.apache.commons.httpclient.HttpMethod;
 import org.apache.commons.httpclient.HttpState;
+import org.apache.commons.httpclient.URI;
 import org.apache.commons.httpclient.URIException;
 import org.apache.commons.httpclient.methods.GetMethod;
 
@@ -52,6 +54,29 @@ public class VersionCheckerTest extends TestCase {
     vc.setDataProvider(dataProvider);
     vc.performCheck(false);
     assertEquals(2, dataProvider.getApplicationIDCallCount);
+  }
+  
+  public void testUnwritableUserHomeDirectory() {
+    String backupUserHomeFolder = System.getProperty("user.home"); //$NON-NLS-1$
+    try {
+      // Clear user.home property
+      System.setProperty("user.home", ""); //$NON-NLS-1$ //$NON-NLS-2$
+      // Next, re-initialize the VersionChecker which will clear all info..
+      VersionChecker.init();
+      assertEquals(VersionChecker.getIsWritable(), true);
+      String versionCheckerPropertiesDirectory = null;
+      try {
+        versionCheckerPropertiesDirectory = VersionChecker.getPropertiesDirectory();
+      } catch (IOException ex) {
+        versionCheckerPropertiesDirectory = null;
+      }
+      
+      // This checks that the fallbacks work.
+      assertNotNull(versionCheckerPropertiesDirectory);
+      
+    } finally {
+      System.setProperty("user.home", backupUserHomeFolder); //$NON-NLS-1$
+    }
   }
 
   /**
@@ -131,14 +156,14 @@ public class VersionCheckerTest extends TestCase {
       MockGetMethod httpMethod = new MockGetMethod();
       VersionChecker vc = new VersionChecker(null, httpMethod);
       vc.setURL(httpMethod, null);
-      assertEquals(1, httpMethod.setQueryStringCount);
-      assertEquals(vc.getDefaultURL(), httpMethod._queryString);
+      assertEquals(1, httpMethod.setURICount);
+      assertEquals(vc.getDefaultURL(), httpMethod._uri.toString());
 
       MockDataProvider dataProvider = new MockDataProvider();
       vc.setDataProvider(dataProvider);
       vc.setURL(httpMethod, null);
-      assertEquals(2, httpMethod.setQueryStringCount);
-      assertTrue(httpMethod._queryString.startsWith("http://test.pentho.org:8080/sample?")); //$NON-NLS-1$
+      assertEquals(2, httpMethod.setURICount);
+      assertTrue(httpMethod._uri.toString().startsWith("http://test.pentho.org:8080/sample?")); //$NON-NLS-1$
     } catch (URIException e) {
       fail(e.getMessage());
     }
@@ -230,15 +255,16 @@ public class VersionCheckerTest extends TestCase {
       return responseBody;
     }
 
-    public String _queryString = null;
+    private URI _uri = null;
+    
+    public int setURICount = 0;
 
-    public int setQueryStringCount = 0;
-
-    public void setQueryString(String arg0) {
-      _queryString = arg0;
-      ++setQueryStringCount;
-      super.setQueryString(arg0);
+    public void setURI(URI uri) throws URIException {
+      _uri = uri;
+      ++setURICount;
+      super.setURI(uri);
     }
+    
   };
 
   /**
@@ -318,9 +344,9 @@ public class VersionCheckerTest extends TestCase {
 
     public boolean throwException = false;
 
-    public void processResults(String results) {
+    public void processResults(String resultsStr) {
       ++processResultsCount;
-      this.results = results;
+      this.results = resultsStr;
       if (throwException) {
         throw new NullPointerException("Test"); //$NON-NLS-1$
       }
