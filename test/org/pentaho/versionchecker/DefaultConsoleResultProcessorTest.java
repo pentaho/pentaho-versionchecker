@@ -36,11 +36,9 @@ public class DefaultConsoleResultProcessorTest extends TestCase implements IVers
     vc.addErrorHandler(this);
     vc.addResultHandler(this);
     vc.addResultHandler(rp);
-    vc.performCheck(false);
+    vc.performCheck(true);
 
     assertNull(error);
-    assertNotNull(results);
-    assertTrue(bs.toString().startsWith(results));
   }
 
   public String getApplicationID() {
