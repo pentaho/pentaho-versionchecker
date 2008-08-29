@@ -1,64 +1,40 @@
-<project name="Pentaho Version Checker" default="dist">
+<!--===========================================================================
+  This is the build file for the Pentaho BI Platform Web project.
+  
+  This build file will use the common_build.xml file as the default build
+  process and should only override the tasks that need to differ from
+  the common build file.
+  
+  See common_build.xml for more details
+============================================================================-->
+<project name="Web" basedir="." default="jar" 
+	xmlns:ivy="antlib:org.apache.ivy.ant" >
+	
+	<description>
+	  This build file is used to create the Web project
+		and works with the common_build.xml file.
+	</description>
 
-	<description>Pentaho Version Checker</description>
-	<property file="src/build-res/version.properties" />
-	<property file="build.properties" />
-    <tstamp>
-       <format property="compile.timestamp" pattern="yyyy-MM-dd HH.mm.ss" />
-    </tstamp>
-	<path id="classpath">
-		<fileset dir="${lib.dir}">
-			<include name="*.jar" />
-			<include name="*.zip" />
-		</fileset>
-	</path>
+	<!-- Define the default location of the common build file -->
+	<property name="common.build.file" value="./common_build.xml" 
+		description="This is the location of the standardized common_build.xml file"/>
 
-	<target name="init">
-		<!--
-        <propertyfile file="src/build-res/version.properties"  comment="Version Property File">
-          <entry  key="release.build.date" type="string" value="${compile.timestamp}"/>
-          <entry  key="release.build.number" type="int" default="0" operation="+"/>
-        </propertyfile>
-        -->
-	</target>
+	<!-- Import the common_build.xml file which contains all the default tasks -->
+	<import file="${common.build.file}"/>
 
-	<target name="clean">
-		<!-- remove build directory -->
-		<delete dir="${bin.dir}" />
-		<delete dir="${dist.dir}" />
-	</target>
-
-	<target name="clean-dist">
-		<delete dir="dist"/>
-	</target>
-
-	<target name="compile" depends="clean, init">
-		<!-- Compile all java classes -->
-		<mkdir dir="${bin.dir}"/>
-		<javac destdir="${bin.dir}" debug="true" optimize="true" deprecation="true" fork="true" source="1.4" target="1.4">
-			<classpath>
-				<path refid="classpath" />
-			</classpath>
-			<src path="${src.dir}" />
-		</javac>
-		<copy todir="${bin.dir}" flatten="false">
+    <!--
+      AS STATED ABOVE, THE ONLY TASKS THAT SHOULD EXIST IN THIS BUILD FILE ARE
+      THE TASKS THAT NEED TO DIFFER FROM THE DEFAULT IMPLEMENTATION OF THE TASKS
+      FOUND IN common_build.xml.
+    --> 
+	<target name="compile.res_copy" description="Copies the required resource files after a compile" >
+		<copy todir="${classes.dir}/build-res" flatten="false">
+	      <fileset dir="src/build-res" />
+	    </copy>
+		<copy todir="${classes.dir}" flatten="false">
 			<fileset dir="${src.dir}">
 				<include name="**/*.properties"/>
 			</fileset>
 		</copy>
-	</target>
-	
-	<target name="dist" depends="clean, compile" description="Creates a JAR of the Version Checker library.">
-		<mkdir dir="dist" />
-		<jar destfile="dist/pentaho-versionchecker.jar">
-			<manifest>
-				<attribute name="Implementation-Title" value="${impl.title}" />
-				<attribute name="Implementation-Version" value="${impl.version}" />
-				<attribute name="Implementation-Vendor" value="${impl.vendor}" />
-				<attribute name="Implementation-ProductID" value="${impl.productID}" />
-			</manifest>
-			<fileset dir="${bin.dir}"/>
-		</jar>
-	</target>
-	
+	</target>	
 </project>
