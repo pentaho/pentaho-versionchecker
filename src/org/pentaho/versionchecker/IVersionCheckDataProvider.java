@@ -29,9 +29,11 @@ public interface IVersionCheckDataProvider {
   static final int DEPTH_MAC_MASK = 256;
   static final int DEPTH_LINUX_MASK = 512;
   
-  String getBaseURL();
-  String getApplicationID();
-  String getApplicationVersion();
-  int getDepth();
-  Map getExtraInformation();
+  public String getBaseURL();
+  public String getApplicationID();
+  public String getApplicationVersion();
+  public int getDepth();
+  public Map getExtraInformation();
+  public void setVersionRequestFlags(int value);
+  
 }
