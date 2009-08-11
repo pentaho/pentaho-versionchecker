@@ -77,4 +77,9 @@ public class DefaultConsoleResultProcessorTest extends TestCase implements IVers
     System.out.println("RESULTS: "+localResults+"\n"); //$NON-NLS-1$ //$NON-NLS-2$
     this.results = localResults;
   }
+
+  public void setVersionRequestFlags(int value) {
+    // TODO Auto-generated method stub
+    
+  }
 }

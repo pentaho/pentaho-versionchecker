@@ -335,6 +335,11 @@ public class VersionCheckerTest extends TestCase {
       ++getExtraInformationCount;
       return extraInformation;
     }
+
+    public void setVersionRequestFlags(int value) {
+      // TODO Auto-generated method stub
+      
+    }
   };
 
   private class MockResultHandler implements IVersionCheckResultHandler {
