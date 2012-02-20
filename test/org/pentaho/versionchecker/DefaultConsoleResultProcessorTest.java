@@ -51,7 +51,7 @@ public class DefaultConsoleResultProcessorTest extends TestCase implements IVers
 
   public String getBaseURL() {
     // TODO Auto-generated method stub
-    return "http://www.pentaho.com/versioncheck/index2.php?protocolVer=1.0&depth=154"; //$NON-NLS-1$
+    return "http://www.pentaho.com/versioncheck/?protocolVer=1.0&depth=154"; //$NON-NLS-1$
   }
 
   public Map getExtraInformation() {
