@@ -350,6 +350,7 @@ public class VersionCheckerTest extends TestCase {
     public boolean throwException = false;
 
     public void handleException( Exception e ) {
+      ++errorCount;
       if ( throwException ) {
         throw new NullPointerException( "Test" ); //$NON-NLS-1$
       }
