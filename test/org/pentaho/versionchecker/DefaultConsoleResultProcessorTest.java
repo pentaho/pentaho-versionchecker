@@ -39,6 +39,37 @@ public class DefaultConsoleResultProcessorTest extends TestCase implements IVers
     vc.performCheck( true );
 
     assertNull( error );
+
+    try {
+      rp.setOutput( null );
+      fail();
+    } catch ( Exception e ) {
+      // Catch the exception
+    }
+  }
+
+  public void testSetError() {
+    DefaultConsoleResultProcessor rp = new DefaultConsoleResultProcessor();
+    ByteArrayOutputStream bs = new ByteArrayOutputStream();
+    PrintStream ps = new PrintStream( bs );
+
+    try {
+      rp.setError( ps );
+    } catch ( Exception e ) {
+      fail();
+    }
+
+    try {
+      rp.setError( null );
+      fail();
+    } catch ( Exception e ) {
+      // Catch the exception
+    }
+  }
+
+  public void testHandleException() {
+    DefaultConsoleResultProcessor rp = new DefaultConsoleResultProcessor();
+    rp.handleException( new ExceptionMock() );
   }
 
   public String getApplicationID() {
@@ -82,5 +113,10 @@ public class DefaultConsoleResultProcessorTest extends TestCase implements IVers
   public void setVersionRequestFlags( int value ) {
     // TODO Auto-generated method stub
 
+  }
+
+  class ExceptionMock extends Exception {
+    @Override public String getMessage() { return ""; }
+    @Override public void printStackTrace( PrintStream s ) { return; }
   }
 }
