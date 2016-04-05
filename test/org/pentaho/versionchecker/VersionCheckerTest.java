@@ -166,6 +166,7 @@ public class VersionCheckerTest extends TestCase {
     } catch ( URIException e ) {
       fail( e.getMessage() );
     }
+    fail();
   }
 
   public void testCreateURL() {
