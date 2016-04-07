@@ -94,5 +94,6 @@ public class BasicVersionCheckerProvider implements IVersionCheckDataProvider {
 
     int depth = versionRequestFlags + computeOSMask();
     return depth;
+    // I'm updating this file, but not the copyright.
   }
 }
