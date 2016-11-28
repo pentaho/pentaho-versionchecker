@@ -85,14 +85,14 @@ public final class VersionHelper implements IVersionHelper {
    * Extracts the version information data from the <code>build-res/version.properties</code> file found in the source
    * directory.
    * 
-   * @return the version information from the <code>build-res/version.properties</code> file
+   * @return the version information from the <code>version.properties</code> file
    */
   protected static VersionInfo createVersionInfo() {
     // We're not in a .jar file - try to find the build-res/version file and
     // read the version information from that.
     final VersionInfo versionInfo = new VersionInfo();
     try {
-      final ResourceBundle bundle = ResourceBundle.getBundle( "build-res.version" ); //$NON-NLS-1$
+      final ResourceBundle bundle = ResourceBundle.getBundle( "version" ); //$NON-NLS-1$
       versionInfo.setFromManifest( false );
       versionInfo.setProductID( bundle.getString( "impl.productID" ) ); //$NON-NLS-1$
       versionInfo.setTitle( bundle.getString( "impl.title" ) ); //$NON-NLS-1$
