@@ -1,5 +1,5 @@
 /*
- * Copyright 2002 - 2013 Pentaho Corporation.  All rights reserved.
+ * Copyright 2002 - 2016 Pentaho Corporation.  All rights reserved.
  * 
  * This software was developed by Pentaho Corporation and is provided under the terms
  * of the Mozilla Public License, Version 1.1, or any later version. You may not use
@@ -33,10 +33,10 @@ public final class VersionHelper implements IVersionHelper {
       // from the .jar file.
       return implTitle + " " + implVersion; //$NON-NLS-1$
     } else {
-      // We're not in a .jar file - try to find the build-res/version file and
+      // We're not in a .jar file - try to find the version file and
       // read the version information from that.
       try {
-        ResourceBundle bundle = ResourceBundle.getBundle( "build-res.version" ); //$NON-NLS-1$
+        ResourceBundle bundle = ResourceBundle.getBundle( "version" ); //$NON-NLS-1$
         StringBuffer buff = new StringBuffer();
         buff.append( bundle.getString( "impl.title" ) ).append( ' ' ).append( bundle.getString( "release.major.number" ) ).append( '.' ).append( bundle.getString( "release.minor.number" ) ); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
         buff.append( '.' )
@@ -82,7 +82,7 @@ public final class VersionHelper implements IVersionHelper {
   }
 
   /**
-   * Extracts the version information data from the <code>build-res/version.properties</code> file found in the source
+   * Extracts the version information data from the <code>version.properties</code> file found in the source
    * directory.
    * 
    * @return the version information from the <code>version.properties</code> file
