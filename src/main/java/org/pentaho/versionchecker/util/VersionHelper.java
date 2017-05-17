@@ -1,5 +1,5 @@
 /*
- * Copyright 2002 - 2016 Pentaho Corporation.  All rights reserved.
+ * Copyright 2002 - 2017 Pentaho Corporation.  All rights reserved.
  * 
  * This software was developed by Pentaho Corporation and is provided under the terms
  * of the Mozilla Public License, Version 1.1, or any later version. You may not use
@@ -88,7 +88,7 @@ public final class VersionHelper implements IVersionHelper {
    * @return the version information from the <code>version.properties</code> file
    */
   protected static VersionInfo createVersionInfo() {
-    // We're not in a .jar file - try to find the build-res/version file and
+    // We're not in a .jar file - try to find the version file and
     // read the version information from that.
     final VersionInfo versionInfo = new VersionInfo();
     try {

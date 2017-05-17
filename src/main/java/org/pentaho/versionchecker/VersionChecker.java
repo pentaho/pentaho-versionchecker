@@ -1,5 +1,5 @@
 /*
- * Copyright 2002 - 2013 Pentaho Corporation.  All rights reserved.
+ * Copyright 2002 - 2017 Pentaho Corporation.  All rights reserved.
  * 
  * This software was developed by Pentaho Corporation and is provided under the terms
  * of the Mozilla Public License, Version 1.1, or any later version. You may not use
@@ -63,7 +63,7 @@ public class VersionChecker {
   // in the VM. That way, we're not having to re-calculate things over and over.
   //
   private static boolean isWritable = true;
-  private static File propsDirectory;
+  static File propsDirectory;
   private static File propsFile;
   private static Properties props;
   private static String guid;
@@ -521,7 +521,7 @@ public class VersionChecker {
       String connector = ""; //$NON-NLS-1$
       if ( urlBase.indexOf( '?' ) == -1 ) {
         connector = "?"; //$NON-NLS-1$
-      } else if ( !urlBase.endsWith( "&" ) ) { //$NON-NLS-1$
+      } else if ( !urlBase.endsWith( "&" ) && !urlBase.endsWith( "?" ) ) { //$NON-NLS-1$
         connector = "&"; //$NON-NLS-1$
       }
 

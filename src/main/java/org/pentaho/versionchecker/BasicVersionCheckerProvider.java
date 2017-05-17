@@ -1,5 +1,5 @@
 /*
- * Copyright 2002 - 2013 Pentaho Corporation.  All rights reserved.
+ * Copyright 2002 - 2017 Pentaho Corporation.  All rights reserved.
  * 
  * This software was developed by Pentaho Corporation and is provided under the terms
  * of the Mozilla Public License, Version 1.1, or any later version. You may not use
@@ -91,8 +91,6 @@ public class BasicVersionCheckerProvider implements IVersionCheckDataProvider {
    * generates the depth flags
    */
   public int getDepth() {
-
-    int depth = versionRequestFlags + computeOSMask();
-    return depth;
+    return versionRequestFlags | computeOSMask();
   }
 }

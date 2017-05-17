@@ -2,7 +2,7 @@
  *
  * Pentaho Data Integration
  *
- * Copyright (C) 2002-2015 by Pentaho : http://www.pentaho.com
+ * Copyright (C) 2002-2017 by Pentaho : http://www.pentaho.com
  *
  *******************************************************************************
  *
@@ -22,7 +22,9 @@
 
 package org.pentaho.versionchecker;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.contrib.java.lang.system.RestoreSystemProperties;
 
 import static org.junit.Assert.*;
 import static org.hamcrest.CoreMatchers.*;
@@ -31,9 +33,25 @@ import static org.hamcrest.CoreMatchers.*;
  * Created by bmorrise on 10/28/15.
  */
 public class UUIDUtilTest {
+  @Rule
+  public final RestoreSystemProperties restoreSystemProperties = new RestoreSystemProperties();
+
+  public void setUp() {
+    UUIDUtil.eAddr = null;
+    UUIDUtil.init();
+  }
 
   @Test
   public void testGetUUIDAsString() {
+    setUp();
+    String uuid = UUIDUtil.getUUIDAsString();
+    assertThat( uuid, notNullValue() );
+  }
+
+  @Test
+  public void testGetUUIDWithPropertyAddress() {
+    System.setProperty( "MAC_ADDRESS", "00:00:00:00:00:00" );
+    setUp();
     String uuid = UUIDUtil.getUUIDAsString();
     assertThat( uuid, notNullValue() );
   }

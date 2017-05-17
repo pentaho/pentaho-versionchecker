@@ -1,5 +1,5 @@
 /*
- * Copyright 2002 - 2013 Pentaho Corporation.  All rights reserved.
+ * Copyright 2002 - 2017 Pentaho Corporation.  All rights reserved.
  * 
  * This software was developed by Pentaho Corporation and is provided under the terms
  * of the Mozilla Public License, Version 1.1, or any later version. You may not use
@@ -13,6 +13,7 @@
 
 package org.pentaho.versionchecker;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URLEncoder;
@@ -33,6 +34,45 @@ import org.apache.commons.httpclient.methods.GetMethod;
 
 @SuppressWarnings( { "unchecked", "rawtypes", "deprecation" } )
 public class VersionCheckerTest extends TestCase {
+
+  @Override
+  protected void setUp() {
+    recursiveDelete( VersionChecker.propsDirectory );
+    // re-initialize the VersionChecker which will clear all info..
+    VersionChecker.init();
+  }
+
+  @Override
+  protected void tearDown() {
+    recursiveDelete( VersionChecker.propsDirectory );
+  }
+
+  private void recursiveDelete( File file ) {
+    File[] files = file.listFiles();
+    if ( files != null ) {
+      for ( File each : files ) {
+        recursiveDelete( each );
+      }
+    }
+    file.delete();
+  }
+
+  public void testComputeVi() {
+    String result = VersionChecker.computeVI( null );
+    assertNotNull( result );
+  }
+
+  public void testPerformCheck() {
+    MockHttpClient httpClient = new MockHttpClient();
+    MockGetMethod getMethod = new MockGetMethod();
+    MockDataProvider dataProvider = new MockDataProvider();
+
+    VersionChecker vc = new VersionChecker( httpClient, getMethod );
+    vc.setDataProvider( dataProvider );
+    vc.performCheck( true );
+
+    assertEquals( 1, getMethod.releaseCount );
+  }
 
   /**
    * Tests the setDataProvider method and makes sure it works with null and without null
@@ -87,6 +127,9 @@ public class VersionCheckerTest extends TestCase {
     MockResultHandler resultsHandler1 = new MockResultHandler();
     MockResultHandler resultsHandler2 = new MockResultHandler();
     VersionChecker vc = new VersionChecker( httpClient, getMethod );
+
+    vc.addResultHandler( null );
+    assertEquals( 0, vc.resultHandlers.size() );
 
     vc.addResultHandler( resultsHandler1 );
     vc.performCheck( false );
@@ -163,6 +206,19 @@ public class VersionCheckerTest extends TestCase {
       vc.setURL( httpMethod, null );
       assertEquals( 2, httpMethod.setURICount );
       assertTrue( httpMethod._uri.toString().startsWith( "http://test.pentho.org:8080/sample?" ) ); //$NON-NLS-1$
+
+      dataProvider.extraInformation = new HashMap() {{
+          put( "a", "a" );
+          put( "b", "b" );
+        }};
+      vc.setURL( httpMethod, null );
+      assertEquals( 3, httpMethod.setURICount );
+      assertTrue( httpMethod._uri.toString().contains( "a=a&b=b" ) );
+
+      dataProvider.extraInformation = null;
+      vc.setURL( httpMethod, null );
+      assertEquals( 4, httpMethod.setURICount );
+
     } catch ( URIException e ) {
       fail( e.getMessage() );
     }
@@ -172,6 +228,8 @@ public class VersionCheckerTest extends TestCase {
     Map params = new HashMap();
     String baseUrl = "http://www.pentaho.org/"; //$NON-NLS-1$
     String result = VersionChecker.createURL( baseUrl, params );
+    assertEquals( baseUrl, result );
+    result = VersionChecker.createURL( baseUrl, null );
     assertEquals( baseUrl, result );
 
     String junk = "a1B2 !@#$%^&*()_-+={[}]|\\:;\"'<,>.?/~`"; //$NON-NLS-1$
@@ -195,6 +253,13 @@ public class VersionCheckerTest extends TestCase {
     baseUrl += "&"; //$NON-NLS-1$
     result = VersionChecker.createURL( baseUrl, params );
     assertEquals( baseUrl + "two=two", result ); //$NON-NLS-1$
+
+    params.clear();
+    params.put( "a", "a" );
+    params.put( null, null );
+    baseUrl = "http://www.pentaho.org/sample?";
+    result = VersionChecker.createURL( baseUrl, params );
+    assertEquals( baseUrl + "a=a", result );
   }
 
   public void testCheckForUpdates() {
@@ -247,6 +312,7 @@ public class VersionCheckerTest extends TestCase {
    * Mock GetMethod that allows for the tracking of the URL and the returning of sample results
    */
   private class MockGetMethod extends GetMethod {
+    private int releaseCount = 0;
 
     public String responseBody = "sample response"; //$NON-NLS-1$
 
@@ -264,7 +330,10 @@ public class VersionCheckerTest extends TestCase {
       super.setURI( uri );
     }
 
-  };
+    public void releaseConnection() {
+      releaseCount++;
+    }
+  }
 
   /**
    * Mock HttpClient class that prevents the executeMethod method from executing
@@ -284,7 +353,7 @@ public class VersionCheckerTest extends TestCase {
     public int executeMethod( HttpMethod arg0 ) throws IOException, HttpException {
       return responseCode;
     }
-  };
+  }
 
   /**
    * Mock IVersionCheckDataProvider implementation that allows for canned responses and method call counting
@@ -306,7 +375,7 @@ public class VersionCheckerTest extends TestCase {
     }
 
     public int getDepth() {
-      return 154;
+      return DEPTH_VERBOSE_MASK | DEPTH_MINOR_MASK | DEPTH_RC_MASK | DEPTH_WINDOWS_MASK; // 154
     }
 
     public String baseURL = "http://test.pentho.org:8080/sample"; //$NON-NLS-1$
@@ -325,7 +394,7 @@ public class VersionCheckerTest extends TestCase {
       // TODO Auto-generated method stub
 
     }
-  };
+  }
 
   private class MockResultHandler implements IVersionCheckResultHandler {
     public String results = null;
@@ -341,7 +410,7 @@ public class VersionCheckerTest extends TestCase {
         throw new NullPointerException( "Test" ); //$NON-NLS-1$
       }
     }
-  };
+  }
 
   private class MockErrorHandler implements IVersionCheckErrorHandler {
 
@@ -355,5 +424,5 @@ public class VersionCheckerTest extends TestCase {
         throw new NullPointerException( "Test" ); //$NON-NLS-1$
       }
     }
-  };
+  }
 }

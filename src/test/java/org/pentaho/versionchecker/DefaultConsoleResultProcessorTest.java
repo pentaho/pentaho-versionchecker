@@ -1,5 +1,5 @@
 /*
- * Copyright 2002 - 2013 Pentaho Corporation.  All rights reserved.
+ * Copyright 2002 - 2017 Pentaho Corporation.  All rights reserved.
  * 
  * This software was developed by Pentaho Corporation and is provided under the terms
  * of the Mozilla Public License, Version 1.1, or any later version. You may not use
@@ -15,35 +15,26 @@ package org.pentaho.versionchecker;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
-import java.util.Map;
 
 import junit.framework.TestCase;
 
-public class DefaultConsoleResultProcessorTest extends TestCase implements IVersionCheckDataProvider,
-    IVersionCheckErrorHandler, IVersionCheckResultHandler {
-  protected Throwable error = null;
+public class DefaultConsoleResultProcessorTest extends TestCase {
 
-  protected String results = null;
-
-  public void testDefaultConsoleResultProcessor() {
+  public void testSetOutput() {
     DefaultConsoleResultProcessor rp = new DefaultConsoleResultProcessor();
     ByteArrayOutputStream bs = new ByteArrayOutputStream();
     PrintStream ps = new PrintStream( bs );
-    rp.setOutput( ps );
 
-    VersionChecker vc = new VersionChecker();
-    vc.setDataProvider( this );
-    vc.addErrorHandler( this );
-    vc.addResultHandler( this );
-    vc.addResultHandler( rp );
-    vc.performCheck( true );
-
-    assertNull( error );
+    try {
+      rp.setOutput( ps );
+    } catch ( Exception e ) {
+      fail();
+    }
 
     try {
       rp.setOutput( null );
       fail();
-    } catch ( Exception e ) {
+    } catch ( Exception ignored ) {
       // Catch the exception
     }
   }
@@ -69,54 +60,30 @@ public class DefaultConsoleResultProcessorTest extends TestCase implements IVers
 
   public void testHandleException() {
     DefaultConsoleResultProcessor rp = new DefaultConsoleResultProcessor();
-    rp.handleException( new ExceptionMock() );
+    ByteArrayOutputStream bs = new ByteArrayOutputStream();
+    PrintStream ps = new PrintStream( bs );
+
+    rp.setError( ps );
+    rp.handleException( new ExceptionMock( ) );
+
+    assertEquals( "Exception Mock", bs.toString().trim() );
   }
 
-  public String getApplicationID() {
-    return "POBS"; //$NON-NLS-1$
-  }
+  public void testProcessResults( ) {
+    DefaultConsoleResultProcessor rp = new DefaultConsoleResultProcessor();
+    ByteArrayOutputStream bs = new ByteArrayOutputStream();
+    PrintStream ps = new PrintStream( bs );
 
-  public String getApplicationVersion() {
-    return "1.6.0.RC1.400"; //$NON-NLS-1$
-  }
+    rp.setOutput( ps );
+    rp.processResults( "test results" );
 
-  public String getBaseURL() {
-    // TODO Auto-generated method stub
-    return "http://www.pentaho.com/versioncheck/?protocolVer=1.0&depth=154"; //$NON-NLS-1$
-  }
-
-  @SuppressWarnings( "rawtypes" )
-  public Map getExtraInformation() {
-    // TODO Auto-generated method stub
-    return null;
-  }
-
-  public int getDepth() {
-    return 154;
-  }
-
-  public String getGuid() {
-    // TODO Auto-generated method stub
-    return "0000-0000-0000-0000"; //$NON-NLS-1$
-  }
-
-  public void handleException( Exception e ) {
-    e.printStackTrace();
-    error = e;
-  }
-
-  public void processResults( String localResults ) {
-    System.out.println( "RESULTS: " + localResults + "\n" ); //$NON-NLS-1$ //$NON-NLS-2$
-    this.results = localResults;
-  }
-
-  public void setVersionRequestFlags( int value ) {
-    // TODO Auto-generated method stub
-
+    assertEquals( "test results", bs.toString().trim() );
   }
 
   class ExceptionMock extends Exception {
-    @Override public String getMessage() { return ""; }
-    @Override public void printStackTrace( PrintStream s ) { return; }
+    @Override public String getMessage() {
+      return "Exception Mock";
+    }
+    @Override public void printStackTrace( PrintStream s ) { }
   }
 }
