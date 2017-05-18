@@ -2,7 +2,7 @@
  *
  * Pentaho Data Integration
  *
- * Copyright (C) 2002-2015 by Pentaho : http://www.pentaho.com
+ * Copyright (C) 2002-2017 by Pentaho : http://www.pentaho.com
  *
  *******************************************************************************
  *
@@ -24,6 +24,9 @@ package org.pentaho.versionchecker.util;
 
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
 
 import static org.junit.Assert.*;
 import static org.hamcrest.CoreMatchers.*;
@@ -52,6 +55,30 @@ public class VersionHelperTest {
     assertThat( versionInfo.getVersionMajor(), notNullValue() );
     assertThat( versionInfo.getVersionMinor(), notNullValue() );
     assertThat( versionInfo.getVersionBuild(), notNullValue() );
+  }
+
+  @Test
+  public void testCreateVersionInfo() {
+    VersionInfo versionInfo = VersionHelper.createVersionInfo( new MockManifest() );
+    assertEquals( "PVC", versionInfo.getProductID() );
+    assertEquals( "Pentaho Version Checker", versionInfo.getTitle() );
+    assertEquals( "1", versionInfo.getVersionMajor() );
+    assertEquals( "6", versionInfo.getVersionMinor() );
+    assertEquals( "0", versionInfo.getVersionRelease() );
+    assertEquals( "RC2", versionInfo.getVersionMilestone() );
+    assertEquals( "400", versionInfo.getVersionBuild() );
+  }
+
+  private class MockManifest extends Manifest {
+    private final Attributes attributes = new Attributes() {{
+        put( new Attributes.Name( "Implementation-ProductID" ), "PVC" );
+        put( new Attributes.Name( "Implementation-Title" ), "Pentaho Version Checker" );
+        put( new Attributes.Name( "Implementation-Version" ), "1.6.0-RC2.400" );
+      }};
+
+    @Override public Attributes getMainAttributes() {
+      return attributes;
+    }
   }
 
 }

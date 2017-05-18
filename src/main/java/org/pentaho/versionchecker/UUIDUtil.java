@@ -1,5 +1,5 @@
 /*
- * Copyright 2002 - 2013 Pentaho Corporation.  All rights reserved.
+ * Copyright 2002 - 2017 Pentaho Corporation.  All rights reserved.
  * 
  * This software was developed by Pentaho Corporation and is provided under the terms
  * of the Mozilla Public License, Version 1.1, or any later version. You may not use
@@ -33,6 +33,12 @@ public class UUIDUtil {
   static org.safehaus.uuid.EthernetAddress eAddr;
 
   static {
+    init();
+  }
+
+  // for testing purposes
+  static void init() {
+    ug = UUIDGenerator.getInstance();
     // Try loading the EthernetAddress library. If this fails, then fallback
     // to
     // using another method for generating UUID's.
@@ -42,8 +48,9 @@ public class UUIDUtil {
      * log.warn(Messages.getErrorString("UUIDUtil.ERROR_0001_LOADING_ETHERNET_ADDRESS") ); //$NON-NLS-1$ //$NON-NLS-2$
      * // Ignore for now. }
      */
-    ug = UUIDGenerator.getInstance();
-    if ( nativeInitialized ) {
+
+    // not used
+    /*if ( nativeInitialized ) {
       try {
         com.ccg.net.ethernet.EthernetAddress ea = com.ccg.net.ethernet.EthernetAddress.getPrimaryAdapter();
         eAddr = new org.safehaus.uuid.EthernetAddress( ea.getBytes() );
@@ -53,7 +60,7 @@ public class UUIDUtil {
         log.error( VersionCheckResourceBundle.getString( "UUIDUtil.ERROR_0002_GET_MAC_ADDR" ), ule ); //$NON-NLS-1$
         nativeInitialized = false;
       }
-    }
+    }*/
 
     /*
      * Add support for running in clustered environments. In this way, the MAC address of the running server can be
@@ -82,7 +89,6 @@ public class UUIDUtil {
     if ( olduuId == null ) {
       log.error( VersionCheckResourceBundle.getString( "UUIDUtil.ERROR_0003_GENERATEFAILED" ) ); //$NON-NLS-1$
     }
-
   }
 
   public static String getUUIDAsString() {

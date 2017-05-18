@@ -2,7 +2,7 @@
  *
  * Pentaho Data Integration
  *
- * Copyright (C) 2002-2015 by Pentaho : http://www.pentaho.com
+ * Copyright (C) 2002-2017 by Pentaho : http://www.pentaho.com
  *
  *******************************************************************************
  *
@@ -23,10 +23,13 @@
 package org.pentaho.versionchecker;
 
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.contrib.java.lang.system.RestoreSystemProperties;
 
 import static org.junit.Assert.*;
 import static org.hamcrest.CoreMatchers.*;
+import static org.pentaho.versionchecker.IVersionCheckDataProvider.*;
 
 /**
  * Created by bmorrise on 10/28/15.
@@ -34,6 +37,9 @@ import static org.hamcrest.CoreMatchers.*;
 public class BasicVersionCheckerProviderTest {
 
   BasicVersionCheckerProvider basicVersionCheckerProvider;
+
+  @Rule
+  public final RestoreSystemProperties restoreSystemProperties = new RestoreSystemProperties();
 
   @Before
   public void setUp() {
@@ -52,7 +58,18 @@ public class BasicVersionCheckerProviderTest {
 
   @Test
   public void testGetDepth() {
-    assertThat( basicVersionCheckerProvider.getDepth(), notNullValue() );
+    int flags = DEPTH_VERBOSE_MASK | DEPTH_RC_MASK; // 18
+    basicVersionCheckerProvider.setVersionRequestFlags( flags );
+    System.setProperty( "os.name", "windows" );
+    assertEquals( flags + DEPTH_WINDOWS_MASK, basicVersionCheckerProvider.getDepth() );
+    System.setProperty( "os.name", "mac" );
+    assertEquals( flags + DEPTH_MAC_MASK, basicVersionCheckerProvider.getDepth() );
+    System.setProperty( "os.name", "linux" );
+    assertEquals( flags + DEPTH_LINUX_MASK, basicVersionCheckerProvider.getDepth() );
+    System.setProperty( "os.name", "" );
+    assertEquals( flags + DEPTH_ALL_MASK, basicVersionCheckerProvider.getDepth() );
+    System.clearProperty( "os.name" );
+    assertEquals( flags + DEPTH_ALL_MASK, basicVersionCheckerProvider.getDepth() );
   }
 
 }
