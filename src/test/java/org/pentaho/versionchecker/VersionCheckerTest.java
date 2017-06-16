@@ -13,24 +13,34 @@
 
 package org.pentaho.versionchecker;
 
+import java.io.ByteArrayInputStream;
+
+import junit.framework.TestCase;
+import org.apache.http.HttpHost;
+import org.apache.http.HttpRequest;
+import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
+import org.apache.http.HttpVersion;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.ResponseHandler;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpRequestBase;
+import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.conn.ClientConnectionManager;
+import org.apache.http.entity.BasicHttpEntity;
+import org.apache.http.message.BasicHeader;
+import org.apache.http.message.BasicHttpResponse;
+import org.apache.http.params.HttpParams;
+import org.apache.http.protocol.HttpContext;
+
 import java.io.File;
 import java.io.IOException;
-import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-
-import junit.framework.TestCase;
-
-import org.apache.commons.httpclient.HostConfiguration;
-import org.apache.commons.httpclient.HttpClient;
-import org.apache.commons.httpclient.HttpException;
-import org.apache.commons.httpclient.HttpMethod;
-import org.apache.commons.httpclient.HttpState;
-import org.apache.commons.httpclient.URI;
-import org.apache.commons.httpclient.URIException;
-import org.apache.commons.httpclient.methods.GetMethod;
 
 @SuppressWarnings( { "unchecked", "rawtypes", "deprecation" } )
 public class VersionCheckerTest extends TestCase {
@@ -84,15 +94,16 @@ public class VersionCheckerTest extends TestCase {
 
     vc.setDataProvider( dataProvider );
     vc.performCheck( false );
-    assertEquals( 1, dataProvider.getApplicationIDCallCount );
+    assertEquals( 2, dataProvider.getApplicationIDCallCount );
 
     vc.setDataProvider( null );
     vc.performCheck( false );
-    assertEquals( 1, dataProvider.getApplicationIDCallCount );
+    assertEquals( 2, dataProvider.getApplicationIDCallCount );
 
     vc.setDataProvider( dataProvider );
     vc.performCheck( false );
-    assertEquals( 2, dataProvider.getApplicationIDCallCount );
+    assertEquals( 4, dataProvider.getApplicationIDCallCount );
+
   }
 
   public void testUnwritableUserHomeDirectory() {
@@ -193,72 +204,74 @@ public class VersionCheckerTest extends TestCase {
   /**
    * Tests the method that sets the URL in the HttpMethod
    */
-  public void testSetURL() {
+  public void testSetURL() throws URISyntaxException {
     try {
       MockGetMethod httpMethod = new MockGetMethod();
       VersionChecker vc = new VersionChecker( null, httpMethod );
       vc.setURL( httpMethod, null );
       assertEquals( 1, httpMethod.setURICount );
-      assertEquals( vc.getDefaultURL(), httpMethod._uri.toString() );
+      assertEquals( vc.getDefaultURL(), httpMethod.uri.toString() );
 
       MockDataProvider dataProvider = new MockDataProvider();
       vc.setDataProvider( dataProvider );
       vc.setURL( httpMethod, null );
       assertEquals( 2, httpMethod.setURICount );
-      assertTrue( httpMethod._uri.toString().startsWith( "http://test.pentho.org:8080/sample?" ) ); //$NON-NLS-1$
+      assertTrue( httpMethod.uri.toString().startsWith( "http://test.pentho.org:8080/sample?" ) ); //$NON-NLS-1$
 
       dataProvider.extraInformation = new HashMap() {{
-          put( "a", "a" );
-          put( "b", "b" );
-        }};
+        put( "a", "a" );
+        put( "b", "b" );
+      }};
       vc.setURL( httpMethod, null );
       assertEquals( 3, httpMethod.setURICount );
-      assertTrue( httpMethod._uri.toString().contains( "a=a&b=b" ) );
+      assertTrue( httpMethod.uri.toString().contains( "a=a&b=b" ) );
 
       dataProvider.extraInformation = null;
       vc.setURL( httpMethod, null );
       assertEquals( 4, httpMethod.setURICount );
 
-    } catch ( URIException e ) {
+    } catch ( Exception e ) {
       fail( e.getMessage() );
     }
   }
 
-  public void testCreateURL() {
+  public void testCreateURL() throws URISyntaxException {
+    HttpGet httpMethod = new HttpGet();
+    VersionChecker versionChecker = new VersionChecker( null, httpMethod );
     Map params = new HashMap();
     String baseUrl = "http://www.pentaho.org/"; //$NON-NLS-1$
-    String result = VersionChecker.createURL( baseUrl, params );
+    String result = versionChecker.buildURI( baseUrl, params ).toString();
     assertEquals( baseUrl, result );
-    result = VersionChecker.createURL( baseUrl, null );
+    result = versionChecker.buildURI( baseUrl, null ).toString();
     assertEquals( baseUrl, result );
 
     String junk = "a1B2 !@#$%^&*()_-+={[}]|\\:;\"'<,>.?/~`"; //$NON-NLS-1$
     String encodedJunk = URLEncoder.encode( junk );
     params.put( "junk", junk ); //$NON-NLS-1$
-    result = VersionChecker.createURL( baseUrl, params );
+    result = versionChecker.buildURI( baseUrl, params ).toString();
     assertEquals( baseUrl + "?junk=" + encodedJunk, result ); //$NON-NLS-1$
 
     params.put( "one", "one" ); //$NON-NLS-1$ //$NON-NLS-2$
-    result = VersionChecker.createURL( baseUrl, params );
+    result = versionChecker.buildURI( baseUrl, params ).toString();
     assertTrue( result.indexOf( "?one=one&" ) > 0 || result.indexOf( "&one=one" ) > 0 ); //$NON-NLS-1$ //$NON-NLS-2$
 
     params.clear();
     params.put( "two", "two" ); //$NON-NLS-1$ //$NON-NLS-2$
     baseUrl += "?one=one"; //$NON-NLS-1$
-    result = VersionChecker.createURL( baseUrl, params );
+    result = versionChecker.buildURI( baseUrl, params ).toString();
     assertEquals( baseUrl + "&two=two", result ); //$NON-NLS-1$
 
     params.clear();
     params.put( "two", "two" ); //$NON-NLS-1$ //$NON-NLS-2$
     baseUrl += "&"; //$NON-NLS-1$
-    result = VersionChecker.createURL( baseUrl, params );
+    result = versionChecker.buildURI( baseUrl, params ).toString();
     assertEquals( baseUrl + "two=two", result ); //$NON-NLS-1$
 
     params.clear();
     params.put( "a", "a" );
     params.put( null, null );
     baseUrl = "http://www.pentaho.org/sample?";
-    result = VersionChecker.createURL( baseUrl, params );
+    result = versionChecker.buildURI( baseUrl, params ).toString();
     assertEquals( baseUrl + "a=a", result );
   }
 
@@ -271,8 +284,8 @@ public class VersionCheckerTest extends TestCase {
     assertEquals( props.size(), 0 );
 
     xmlTest = "<vercheck protocol=\"1.0\">\n" + //$NON-NLS-1$
-        "<product id=\"\"><update title=\"\" version=\"\" type=\"\"/></product>\n" + //$NON-NLS-1$
-        "</vercheck>"; //$NON-NLS-1$
+      "<product id=\"\"><update title=\"\" version=\"\" type=\"\"/></product>\n" + //$NON-NLS-1$
+      "</vercheck>"; //$NON-NLS-1$
 
     output = VersionChecker.checkForUpdates( dataProvider, xmlTest, props, false );
     assertEquals( xmlTest, output );
@@ -283,51 +296,55 @@ public class VersionCheckerTest extends TestCase {
     assertEquals( props.getProperty( "versionchk.prd.1.6.0-RC1.123.update" ), "  " ); //$NON-NLS-1$ //$NON-NLS-2$
 
     xmlTest = "<vercheck protocol=\"1.0\">\n" + //$NON-NLS-1$
-        "<product id=\"POBS\">\n" + //$NON-NLS-1$
-        "<update title=\"Pentaho BI Suite\" version=\"1.1\" type=\"GA\"/>\n" + //$NON-NLS-1$
-        "<update title=\"Pentaho BI Suite\" version=\"1.2\" type=\"GA\"/>\n" + //$NON-NLS-1$
-        "</product>\n" + //$NON-NLS-1$
-        "</vercheck>"; //$NON-NLS-1$
+      "<product id=\"POBS\">\n" + //$NON-NLS-1$
+      "<update title=\"Pentaho BI Suite\" version=\"1.1\" type=\"GA\"/>\n" + //$NON-NLS-1$
+      "<update title=\"Pentaho BI Suite\" version=\"1.2\" type=\"GA\"/>\n" + //$NON-NLS-1$
+      "</product>\n" + //$NON-NLS-1$
+      "</vercheck>"; //$NON-NLS-1$
 
     props = new Properties();
 
     output = VersionChecker.checkForUpdates( dataProvider, xmlTest, props, true );
     assertEquals( xmlTest, output );
     assertEquals(
-        props.getProperty( "versionchk.prd.1.6.0-RC1.123.update" ), "Pentaho BI Suite 1.1 GA,Pentaho BI Suite 1.2 GA" ); //$NON-NLS-1$ //$NON-NLS-2$
+      props.getProperty( "versionchk.prd.1.6.0-RC1.123.update" ),
+      "Pentaho BI Suite 1.1 GA,Pentaho BI Suite 1.2 GA" ); //$NON-NLS-1$ //$NON-NLS-2$
 
     output = VersionChecker.checkForUpdates( dataProvider, xmlTest, props, false );
     assertEquals( xmlTest, output );
     assertEquals(
-        props.getProperty( "versionchk.prd.1.6.0-RC1.123.update" ), "Pentaho BI Suite 1.1 GA,Pentaho BI Suite 1.2 GA" ); //$NON-NLS-1$ //$NON-NLS-2$
+      props.getProperty( "versionchk.prd.1.6.0-RC1.123.update" ),
+      "Pentaho BI Suite 1.1 GA,Pentaho BI Suite 1.2 GA" ); //$NON-NLS-1$ //$NON-NLS-2$
 
     output = VersionChecker.checkForUpdates( dataProvider, xmlTest, props, true );
     assertEquals( output, "<vercheck protocol=\"1.0\"/>" ); //$NON-NLS-1$
     assertEquals(
-        props.getProperty( "versionchk.prd.1.6.0-RC1.123.update" ), "Pentaho BI Suite 1.1 GA,Pentaho BI Suite 1.2 GA" ); //$NON-NLS-1$ //$NON-NLS-2$
+      props.getProperty( "versionchk.prd.1.6.0-RC1.123.update" ),
+      "Pentaho BI Suite 1.1 GA,Pentaho BI Suite 1.2 GA" ); //$NON-NLS-1$ //$NON-NLS-2$
 
   }
 
   /**
    * Mock GetMethod that allows for the tracking of the URL and the returning of sample results
    */
-  private class MockGetMethod extends GetMethod {
+  private class MockGetMethod extends HttpRequestBase {
     private int releaseCount = 0;
 
-    public String responseBody = "sample response"; //$NON-NLS-1$
+    public String responseBody = "<xml>sample</xml>"; //$NON-NLS-1$
 
-    public String getResponseBodyAsString() {
-      return responseBody;
-    }
-
-    private URI _uri = null;
+    private URI uri = null;
 
     public int setURICount = 0;
 
-    public void setURI( URI uri ) throws URIException {
-      _uri = uri;
+    public void setURI( URI uri ) {
+      this.uri = uri;
       ++setURICount;
       super.setURI( uri );
+    }
+
+    @Override
+    public String getMethod() {
+      return null;
     }
 
     public void releaseConnection() {
@@ -338,20 +355,71 @@ public class VersionCheckerTest extends TestCase {
   /**
    * Mock HttpClient class that prevents the executeMethod method from executing
    */
-  private class MockHttpClient extends HttpClient {
-    public int responseCode = HttpURLConnection.HTTP_OK;
-
-    public int executeMethod( HostConfiguration arg0, HttpMethod arg1, HttpState arg2 ) throws IOException,
-      HttpException {
-      return responseCode;
+  private class MockHttpClient implements HttpClient {
+    @Override
+    public HttpParams getParams() {
+      return null;
     }
 
-    public int executeMethod( HostConfiguration arg0, HttpMethod arg1 ) throws IOException, HttpException {
-      return responseCode;
+    @Override
+    public ClientConnectionManager getConnectionManager() {
+      return null;
     }
 
-    public int executeMethod( HttpMethod arg0 ) throws IOException, HttpException {
-      return responseCode;
+    @Override
+    public HttpResponse execute( HttpUriRequest request ) throws IOException {
+      BasicHttpResponse basicHttpResponse =
+        new BasicHttpResponse( HttpVersion.HTTP_1_1, HttpStatus.SC_OK, "reason" ); //$NON-NLS-1$
+      BasicHttpEntity basicHttpEntity = new BasicHttpEntity();
+      basicHttpEntity.setContentType( new BasicHeader( "Content-Type", "text/plain" ) ); //$NON-NLS-1$ //$NON-NLS-2$
+      String xml = "<xml>sample</xml>"; //$NON-NLS-1$
+      byte[] xmlBytes = xml.getBytes();
+      basicHttpEntity.setContent( new ByteArrayInputStream( xmlBytes ) );
+      basicHttpResponse.setEntity( basicHttpEntity );
+      return basicHttpResponse;
+
+    }
+
+    @Override
+    public HttpResponse execute( HttpUriRequest request, HttpContext context )
+      throws IOException {
+      return null;
+    }
+
+    @Override
+    public HttpResponse execute( HttpHost target, HttpRequest request )
+      throws IOException {
+      return null;
+    }
+
+    @Override
+    public HttpResponse execute( HttpHost target, HttpRequest request, HttpContext context )
+      throws IOException {
+      return null;
+    }
+
+    @Override
+    public <T> T execute( HttpUriRequest request, ResponseHandler<? extends T> responseHandler )
+      throws IOException {
+      return null;
+    }
+
+    @Override
+    public <T> T execute( HttpUriRequest request, ResponseHandler<? extends T> responseHandler, HttpContext context )
+      throws IOException {
+      return null;
+    }
+
+    @Override
+    public <T> T execute( HttpHost target, HttpRequest request, ResponseHandler<? extends T> responseHandler )
+      throws IOException {
+      return null;
+    }
+
+    @Override
+    public <T> T execute( HttpHost target, HttpRequest request, ResponseHandler<? extends T> responseHandler,
+                          HttpContext context ) throws IOException {
+      return null;
     }
   }
 
@@ -391,8 +459,7 @@ public class VersionCheckerTest extends TestCase {
     }
 
     public void setVersionRequestFlags( int value ) {
-      // TODO Auto-generated method stub
-
+      throw new UnsupportedOperationException();
     }
   }
 
