@@ -13,45 +13,33 @@
 
 package org.pentaho.versionchecker;
 
-import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpHeaders;
-import org.apache.http.HttpResponse;
-import org.apache.http.NameValuePair;
-import org.apache.http.StatusLine;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.config.RequestConfig;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpRequestBase;
-import org.apache.http.client.utils.URIBuilder;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.util.EntityUtils;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.HttpURLConnection;
-import java.net.URI;
-import java.net.URISyntaxException;
+import java.net.URLEncoder;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+
+import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.httpclient.HttpClient;
+import org.apache.commons.httpclient.HttpMethod;
+import org.apache.commons.httpclient.URI;
+import org.apache.commons.httpclient.URIException;
+import org.apache.commons.httpclient.methods.GetMethod;
 
 /**
  * Checks for updated software information for the specified applications. <br/>
  * This class gets version information from the supplied <code>IVersionCheckDataProvider</code> and communicates the
  * results to the list of supplied <code>IVersionCheckResultHandler</code>. If an error occurs during processing, the
  * error information will be passed along to the list of supplied <code>IVersionCheckErrorHandler</code>.
- *
+ * 
  * @author dkincade
  */
 @SuppressWarnings( { "rawtypes", "unchecked" } )
@@ -105,13 +93,11 @@ public class VersionChecker {
           System.out.println( "*** Cannot Write Properties ***" ); //$NON-NLS-1$
         }
       } else {
-        propsDirectory = new File(
-          homeDir + ( homeDir.endsWith( "/" ) ? "" : File.separator ) + PENTAHO_DIR ); //$NON-NLS-1$ //$NON-NLS-2$
+        propsDirectory = new File( homeDir + ( homeDir.endsWith( "/" ) ? "" : File.separator ) + PENTAHO_DIR ); //$NON-NLS-1$ //$NON-NLS-2$
         propsDirectory.mkdirs();
         String propsPath = propsDirectory.getCanonicalPath();
         propsFile =
-          new File( propsPath + ( propsPath.endsWith( "/" ) ? "" : File.separator )
-            + VERCHECK_PROPS_FILENAME ); //$NON-NLS-1$ //$NON-NLS-2$
+            new File( propsPath + ( propsPath.endsWith( "/" ) ? "" : File.separator ) + VERCHECK_PROPS_FILENAME ); //$NON-NLS-1$ //$NON-NLS-2$
         if ( DEBUGGING ) {
           System.out.println( "Properties Path: " + propsPath ); //$NON-NLS-1$
         }
@@ -159,8 +145,7 @@ public class VersionChecker {
   private static boolean testWritabilityOfFolder( String testName ) {
     boolean rtn = false;
     if ( ( testName != null ) && ( testName.length() > 0 ) ) {
-      String test1 = testName + ( testName.endsWith( "/" ) ? "" : File.separator )
-        + "test_pentaho_write_.txt"; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+      String test1 = testName + ( testName.endsWith( "/" ) ? "" : File.separator ) + "test_pentaho_write_.txt"; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
       File testThisDir = new File( test1 );
       try {
         if ( !testThisDir.exists() ) {
@@ -285,11 +270,10 @@ public class VersionChecker {
   /**
    * Default URL used if none is provided - read from the resource bundle
    */
-  private static final String DEFAULT_URL = VersionCheckResourceBundle.getString( "VersionChecker.CODE_default_url" );
-  //$NON-NLS-1$
+  private static final String DEFAULT_URL = VersionCheckResourceBundle.getString( "VersionChecker.CODE_default_url" ); //$NON-NLS-1$
 
   private static final String DEFAULT_TIMEOUT_MILLIS = VersionCheckResourceBundle
-    .getString( "VersionChecker.CODE_default_timeout_millis" ); //$NON-NLS-1$
+      .getString( "VersionChecker.CODE_default_timeout_millis" ); //$NON-NLS-1$
 
   /**
    * Default constructor
@@ -344,9 +328,11 @@ public class VersionChecker {
    * NOTE: If no DataProvider is specified, this method will still execute.
    */
   public void performCheck( boolean ignoreExistingUpdates ) {
-    final HttpRequestBase httpMethod = getHttpMethod();
+
+    final HttpClient httpClient = getHttpClient();
+    final HttpMethod httpMethod = getHttpMethod();
     try {
-      int timeout = 30_000;
+      int timeout = 30000;
       try {
         timeout = Integer.parseInt( DEFAULT_TIMEOUT_MILLIS );
       } catch ( Exception e ) {
@@ -356,30 +342,19 @@ public class VersionChecker {
         }
       }
 
+      httpClient.getHttpConnectionManager().getParams().setSoTimeout( timeout );
+
       // Set the URL and parameters
       setURL( httpMethod, guid );
 
-      RequestConfig requestConfig = RequestConfig.custom()
-        .setSocketTimeout( timeout )
-        .setConnectTimeout( timeout )
-        .build();
-
-      HttpClient httpClient =
-        defaultHttpClient != null ? defaultHttpClient : buildHttpClient( requestConfig );
-
       // Execute the request
-      httpMethod.setHeader( HttpHeaders.CONTENT_TYPE, "application/json" );
-      HttpResponse httpResponse = httpClient.execute( httpMethod );
-      StatusLine statusLine = httpResponse.getStatusLine();
-      final int resultCode = statusLine.getStatusCode();
-
+      final int resultCode = httpClient.executeMethod( httpMethod );
       if ( resultCode != HttpURLConnection.HTTP_OK ) {
-        throw new Exception( VersionCheckResourceBundle
-          .getString( "VersionChecker.ERROR_0002_IS_NOT_OK_RESPONSE" + resultCode ) ); //$NON-NLS-1$
+        // TODO - improve this
+        throw new Exception( "Invalid Result Code Returned: " + resultCode ); //$NON-NLS-1$
       }
 
-      HttpEntity entity = httpResponse.getEntity();
-      String resultXml = EntityUtils.toString( entity );
+      String resultXml = httpMethod.getResponseBodyAsString();
 
       resultXml = checkForUpdates( dataProvider, resultXml, props, ignoreExistingUpdates );
 
@@ -390,7 +365,7 @@ public class VersionChecker {
       // note that any updates changed above will be saved also
       if ( dataProvider != null ) {
         String lastCheckProp = PROP_ROOT + "." + dataProvider.getApplicationID() + "." + //$NON-NLS-1$ //$NON-NLS-2$
-          dataProvider.getApplicationVersion() + "." + PROP_LASTCHECK; //$NON-NLS-1$
+            dataProvider.getApplicationVersion() + "." + PROP_LASTCHECK; //$NON-NLS-1$
         props.setProperty( lastCheckProp, new Date().toString() );
         saveProperties();
       }
@@ -407,25 +382,21 @@ public class VersionChecker {
     }
   }
 
-  private HttpClient buildHttpClient( RequestConfig requestConfig ) {
-    CloseableHttpClient httpClient = HttpClientBuilder
-      .create()
-      .setDefaultRequestConfig( requestConfig )
-      .build();
-    return httpClient;
-  }
-
   /**
    * This utility method checks for updates Update the .updates property, and also supports suppression of update if
    * requested
-   *
-   * @param resultXml             the xml from the server
-   * @param propsToCheck          the global properties object
-   * @param ignoreExistingUpdates true if we should ignore existing updates
+   * 
+   * @param resultXml
+   *          the xml from the server
+   * @param propsToCheck
+   *          the global properties object
+   * @param ignoreExistingUpdates
+   *          true if we should ignore existing updates
+   * 
    * @return original or suppressed resultXml
    */
   static String checkForUpdates( IVersionCheckDataProvider dataProvider, String resultXml, Properties propsToCheck,
-                                 boolean ignoreExistingUpdates ) {
+      boolean ignoreExistingUpdates ) {
     if ( dataProvider != null ) {
       int updateLoc = resultXml.indexOf( "<update" ); //$NON-NLS-1$
       if ( updateLoc >= 0 ) {
@@ -447,7 +418,7 @@ public class VersionChecker {
 
           // locate the version in the properties
           String updateProp = PROP_ROOT + "." + dataProvider.getApplicationID() + "." + //$NON-NLS-1$ //$NON-NLS-2$
-            dataProvider.getApplicationVersion() + "." + PROP_UPDATE; //$NON-NLS-1$
+              dataProvider.getApplicationVersion() + "." + PROP_UPDATE; //$NON-NLS-1$
 
           String updateVal = propsToCheck.getProperty( updateProp, "" ); //$NON-NLS-1$
 
@@ -478,13 +449,15 @@ public class VersionChecker {
   /**
    * Sets the URL (and parameters) for the request in the HttpMethod. The data provider information is sed to set the
    * parameters
-   *
-   * @param method the method which will have the URL set
-   * @throws URISyntaxException Indicates an error creating the URI
+   * 
+   * @param method
+   *          the method which will have the URL set
+   * @throws URIException
+   *           Indicates an error creating the URI
    */
-  protected void setURL( HttpRequestBase method, String guid ) throws URISyntaxException {
+  protected void setURL( HttpMethod method, String guid ) throws URIException {
     String urlBase = null;
-    final Map<String, String> parameters = new HashMap();
+    final Map parameters = new HashMap();
 
     // If we have a data provider, get the parameters from there
     if ( dataProvider != null ) {
@@ -514,42 +487,16 @@ public class VersionChecker {
     if ( urlBase == null ) {
       urlBase = getDefaultURL();
     }
-    URI uri = buildURI( urlBase, parameters );
+
+    // Set the url in the method
+    String urlCreated = createURL( urlBase, parameters );
+    URI uri = new URI( urlCreated, true );
     method.setURI( uri );
   }
 
   /**
-   * Creates the URL with query string based off the base url and the parameters passed.
-   *
-   * @param urlBase
-   *          the first part of the url
-   * @param parameters
-   *          the parameters to add as part of the query string or null
-   * @return the complete URL and query string
-   */
-  // The method is defined as package-protected in order to be accessible by unit tests
-  protected URI buildURI( String urlBase, Map<String, String> parameters ) throws URISyntaxException {
-    URIBuilder uriBuilder = new URIBuilder( urlBase );
-    if ( parameters == null ) {
-      return uriBuilder.build();
-    }
-    List<NameValuePair> queryParams = uriBuilder.getQueryParams();
-    for ( Map.Entry<String, String> entry : parameters.entrySet() ) {
-      String key = entry.getKey();
-      if ( key != null ) {
-        queryParams.add( new BasicNameValuePair( key, entry.getValue() ) );
-      }
-    }
-    if ( !queryParams.isEmpty() ) {
-      uriBuilder.setParameters( queryParams );
-    }
-
-    return uriBuilder.build();
-  }
-
-  /**
    * Returns the default URL. This is stored in the properties file
-   *
+   * 
    * @return the URL retrieved that should be used as the default URL
    */
   protected String getDefaultURL() {
@@ -557,12 +504,49 @@ public class VersionChecker {
   }
 
   /**
+   * Creats the URL with query string based off the base url and the parameters passed
+   * 
+   * @param urlBase
+   *          the first part of the url
+   * @param parameters
+   *          the parameters to add as part of the query string
+   * @return the complete URL and query string
+   */
+  @SuppressWarnings( "deprecation" )
+  protected static String createURL( final String urlBase, Map parameters ) {
+    // Create the query string from the url and the parameters
+    final StringBuffer queryString = new StringBuffer();
+    queryString.append( urlBase );
+    if ( parameters != null ) {
+      String connector = ""; //$NON-NLS-1$
+      if ( urlBase.indexOf( '?' ) == -1 ) {
+        connector = "?"; //$NON-NLS-1$
+      } else if ( !urlBase.endsWith( "&" ) && !urlBase.endsWith( "?" ) ) { //$NON-NLS-1$
+        connector = "&"; //$NON-NLS-1$
+      }
+
+      for ( final Iterator it = parameters.keySet().iterator(); it.hasNext(); ) {
+        final Object key = it.next();
+        if ( key != null ) {
+          final Object obj = parameters.get( key );
+          final String value = ( obj != null ? obj.toString() : "" ); //$NON-NLS-1$
+          queryString.append( connector ).append( URLEncoder.encode( key.toString() ) ).append( '=' ).append(
+              URLEncoder.encode( value ) );
+          connector = "&"; //$NON-NLS-1$
+        }
+      }
+    }
+
+    // Return the generated query string
+    return queryString.toString();
+  }
+
+  /**
    * Computes the VI field for the data provided. The VI is the MD5 encryption of the concatination of the productID and
    * the guid.
    */
   protected static final String computeVI( final String productID ) {
-    return DigestUtils
-      .md5Hex( ( productID == null ? "" : productID ) + ( guid == null ? "" : guid ) ); //$NON-NLS-1$ //$NON-NLS-2$
+    return DigestUtils.md5Hex( ( productID == null ? "" : productID ) + ( guid == null ? "" : guid ) ); //$NON-NLS-1$ //$NON-NLS-2$
   }
 
   /**
@@ -570,8 +554,9 @@ public class VersionChecker {
    * try/catch block to prevent an exception from chaining upward out of this flow of control. <br>
    * NOTE: This is not done using threads ... therefore (right or wrong), if one handler takes a long time to process,
    * the remaining handlers will have to wait
-   *
-   * @param results the results passed to each handler
+   * 
+   * @param results
+   *          the results passed to each handler
    */
   protected void processResults( final String results ) {
     for ( final Iterator it = resultHandlers.iterator(); it.hasNext(); ) {
@@ -580,8 +565,7 @@ public class VersionChecker {
         resultHandler.processResults( results );
       } catch ( final Throwable t ) {
         System.err.println( VersionCheckResourceBundle
-          .getString(
-            "VersionChecker.ERROR_0001_ERROR_THROWN_FROM_RESULTS_HANDLER" ) ); // TODO log message //$NON-NLS-1$
+            .getString( "VersionChecker.ERROR_0001_ERROR_THROWN_FROM_RESULTS_HANDLER" ) ); // TODO log message //$NON-NLS-1$
       }
     }
   }
@@ -597,7 +581,7 @@ public class VersionChecker {
         errorHandler.handleException( e );
       } catch ( final Throwable t ) {
         System.err.println( VersionCheckResourceBundle
-          .getString( "VersionChecker.ERROR_0001_ERROR_THROWN_FROM_ERROR_HANDLER" ) ); // TODO log message //$NON-NLS-1$
+            .getString( "VersionChecker.ERROR_0001_ERROR_THROWN_FROM_ERROR_HANDLER" ) ); // TODO log message //$NON-NLS-1$
       }
     }
   }
@@ -609,11 +593,11 @@ public class VersionChecker {
    * <li>Allows subclasses to specify a HttpClient with different parameters
    * <li>Unit Testing
    * </ol>
-   *
+   * 
    * @return the HttpClient to be used for processing
    */
   protected HttpClient getHttpClient() {
-    return defaultHttpClient != null ? defaultHttpClient : new DefaultHttpClient();
+    return defaultHttpClient != null ? defaultHttpClient : new HttpClient();
   }
 
   /**
@@ -625,17 +609,17 @@ public class VersionChecker {
    * </ol>
    * NOTE: This method returns a HttpMethod not specifically a GetMethod. This allows a subclass to change over to
    * PostMethod later.
-   *
+   * 
    * @return the HttpMethod to be used during processing.
    */
-  protected HttpRequestBase getHttpMethod() {
-    return defaultHttpMethod != null ? defaultHttpMethod : new HttpGet();
+  protected HttpMethod getHttpMethod() {
+    return defaultHttpMethod != null ? defaultHttpMethod : new GetMethod();
   }
 
   // **************************************************************************
   // * Used for Unit Testing *
   // **************************************************************************
-  protected VersionChecker( final HttpClient defaultHttpClient, final HttpRequestBase defaultHttpMethod ) {
+  protected VersionChecker( final HttpClient defaultHttpClient, final HttpMethod defaultHttpMethod ) {
     this();
     setDefaultHttpClient( defaultHttpClient );
     setDefaultHttpMethod( defaultHttpMethod );
@@ -645,11 +629,11 @@ public class VersionChecker {
     this.defaultHttpClient = httpClient;
   }
 
-  protected void setDefaultHttpMethod( final HttpRequestBase httpMethod ) {
+  protected void setDefaultHttpMethod( final HttpMethod httpMethod ) {
     this.defaultHttpMethod = httpMethod;
   }
 
   private HttpClient defaultHttpClient;
 
-  private HttpRequestBase defaultHttpMethod;
+  private HttpMethod defaultHttpMethod;
 }
