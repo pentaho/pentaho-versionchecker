@@ -1,4 +1,4 @@
-# Pentaho Version Checker #
+# Hitachi Vantara Version Checker #
 
 
 How to build
