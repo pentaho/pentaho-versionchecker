@@ -533,13 +533,13 @@ public class VersionChecker {
     if ( parameters == null ) {
       return uriBuilder.build();
     }
-    List<NameValuePair> queryParams = uriBuilder.getQueryParams();
     for ( Map.Entry<String, String> entry : parameters.entrySet() ) {
       String key = entry.getKey();
       if ( key != null ) {
-        queryParams.add( new BasicNameValuePair( key, entry.getValue() ) );
+        uriBuilder.addParameter(  key, entry.getValue() );
       }
     }
+    List<NameValuePair> queryParams = uriBuilder.getQueryParams();
     if ( !queryParams.isEmpty() ) {
       uriBuilder.setParameters( queryParams );
     }
