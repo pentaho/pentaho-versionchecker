@@ -1,5 +1,5 @@
 /*
- * Copyright 2002 - 2017 Hitachi Vantara.  All rights reserved.
+ * Copyright 2002 - 2019 Hitachi Vantara.  All rights reserved.
  * 
  * This software was developed by Hitachi Vantara and is provided under the terms
  * of the Mozilla Public License, Version 1.1, or any later version. You may not use
@@ -27,7 +27,6 @@ import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 
 import java.io.File;
